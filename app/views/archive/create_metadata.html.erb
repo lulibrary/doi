@@ -1,0 +1,13 @@
+<%= render 'shared/flash_messages' if !flash.empty? %>
+<%= params.inspect %>
+<br/>
+<br/>
+<%= @datacite_metadata %>
+<br/>
+<br/>
+<%= session[:pure_record].inspect %>
+<br/>
+<br/>
+<%= session[:pure_dataset_summary].inspect %>
+
+<% flash.clear %>

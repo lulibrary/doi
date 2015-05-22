@@ -1,0 +1,118 @@
+class DoisControllerUnused < ApplicationController
+# UNUSED
+
+def build_url(scheme: 'http', host: 'example.com', path: '')
+uri = URI::HTTP.build({:scheme => scheme,
+:host => host,
+:path => '/' + path
+})
+uri.to_s
+end
+
+def manage_metadata(id, pure_dataset_metadata)
+record = Record.find(id)
+doi = record.doi
+datacite_metadata =
+crosswalk_pure_to_datacite_dataset_metadata(doi, pure_dataset_metadata)
+response_code = create_metadata(id, datacite_metadata)
+end
+
+def resolve
+@doi = params[:doi]
+update
+# @doi_encoded = URI::encode(params[:doi])
+# @display_prefixes = display_prefixes
+end
+
+def get_metadata(doi)
+# pure_datacite_metadata = edit_metadata_pure
+doc = crosswalk_pure_to_datacite_dataset_metadata(doi, session[:pure_record])
+doc.to_xml
+end
+
+def new_manual
+@pure_id = session[:pure_id]
+session[:pure_id] = ''
+if @pure_id.empty?
+redirect_to :dois_search
+end
+@display_prefixes = display_prefixes
+end
+
+def create_metadata_manual
+endpoint = ENV['ENDPOINT'] + '/metadata'
+username = ENV['USERNAME']
+password = ENV['PASSWORD']
+pem = File.read(ENV['PEM'])
+@xml = build_xml
+@doi = params[:doi]
+response_code = update_remote_metadata(endpoint, build_xml, username,
+password, pem)
+# @status = response_status_message(response_code)
+end
+
+def edit_metadata
+# @doi = params[:doi]
+record = Record.find(params[:id])
+@doi = record.doi
+endpoint = ENV['ENDPOINT'] + '/metadata' + '/' + record.doi
+username = ENV['USERNAME']
+password = ENV['PASSWORD']
+pem = File.read(ENV['PEM'])
+# @xml = get_remote_metadata(endpoint, username, password, pem)
+# @doc = Nokogiri::XML(@xml)
+@xml = session[:pure_dataset_summary]
+end
+
+def edit_metadata_pure
+# @doi = params[:doi]
+# record = Record.find(params[:id])
+# @doi = record.doi
+# endpoint = ENV['ENDPOINT'] + '/metadata' + '/' + record.doi
+# username = ENV['USERNAME']
+# password = ENV['PASSWORD']
+# username:password = purewslibrary:tfrw46kegv
+# username:password base64 encoded is cHVyZXdzbGlicmFyeTp0ZnJ3NDZrZWd2
+username = 'purewslibrary'
+password = 'tfrw46kegv'
+pem = File.read(ENV['PEM'])
+
+# 69508225
+endpoint = 'https://ciswebtest.lancaster.ac.uk/purewebservices/datasets/datasetid/' + '69508225'
+pure_metadata = get_remote_metadata_pure(endpoint, username, password, pem)
+# xml = crosswalk_pure_to_datacite_dataset_metadata(params[:doi],
+# pure_datacite_metadata)
+end
+
+def get_remote_metadata(endpoint, username, password, pem)
+uri = URI.parse(endpoint)
+http = Net::HTTP.new(uri.host, uri.port)
+http.use_ssl = true
+http.cert = OpenSSL::X509::Certificate.new(pem)
+http.key = OpenSSL::PKey::RSA.new(pem)
+http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+req = Net::HTTP::Get.new(uri)
+req.initialize_http_header({'Accept' => 'application/xml'})
+req.content_type = 'application/xml;charset=UTF-8'
+req.basic_auth username, password
+response = http.request(req)
+# @response = response
+@debug = false
+if @debug
+@response_class = response.class
+@headers = {}
+@headers[:request] = headers(req)
+@headers[:response] = headers(response)
+end
+response.code
+if response.code != '200'
+flash[:warning] = response.code + ' ' + response.body
+return
+end
+flash[:info] = response.code + ' ' + response.body
+response.body
+
+# redirect_to :root, :flash => { :notice => endpoint + ' metadata successfully fetched' }
+end
+
+end

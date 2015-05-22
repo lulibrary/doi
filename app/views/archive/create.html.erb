@@ -1,0 +1,48 @@
+<%= render 'shared/flash_messages' if !flash.empty? %>
+<%= params.inspect %>
+
+
+<%#= @doi %>
+<!--<br/>-->
+<%#= @url %>
+<!--<br/>-->
+<%#= @u %><%#= @p %>
+
+<%= @sm_state %>
+
+<% if @response %>
+    <br>
+    <%= @response.code %>
+    <br>
+    <%= @response.body %>
+<% end %>
+
+<% if @headers %>
+    REQUEST
+    <br/>
+    <%= @headers[:request].each do |key, value|%>
+        <%= "#{key}: #{value}" %>
+        <br/>
+    <% end %>
+<br/>
+<br/>
+    RESPONSE
+    <br/>
+<%= @headers[:response].each do |key, value|%>
+        <%= "#{key}: #{value}" %>
+        <br/>
+    <% end %>
+<% end %>
+
+
+<% flash.clear %>
+
+<!--<br/>-->
+<%#= @doi %>
+<!--<br/>-->
+<%#= @url %>
+<!--<br/>-->
+<%#= @response.code %>
+<!--<br/>-->
+<%#= @response.body %>
+<%#= @response %>

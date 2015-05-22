@@ -1,0 +1,17 @@
+<%= render 'shared/flash_messages' if !flash.empty? %>
+<%#= session[:pure_dataset_summary].inspect %>
+
+<%#= @xml %>
+<br/>
+<%#= @doc %>
+
+<h3>Update metadata for an existing DOI</h3>
+<%= form_tag(:metadata_create, id: 'metadata') do %>
+
+    <%= submit_tag "Update Metadata" %>
+<% end %>
+
+<% flash.clear %>
+
+<!--<script src="/javascripts/livevalidation_standalone.compressed.js"></script>-->
+<!--<script src="/javascripts/livevalidation_setup.js"></script>-->

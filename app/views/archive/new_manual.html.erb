@@ -1,0 +1,29 @@
+<%= render 'shared/flash_messages' if !flash.empty? %>
+<h3>Mint a new DOI</h3>
+<%= form_tag({controller: "dois", action: "create"}, method: "post") do %>
+    Pure Id: <%= text_field_tag :pure_id, @pure_id, placeholder: 123456,  readonly: true, :required => true, :class => 'text-field-pure-id' %>
+    <br/>
+    <br/>
+    Pure UUID: <%= text_field_tag :pure_uuid, '', placeholder: 'dffc5340-db50-481e-a0db-2e599ab6949d',  readonly: false, :required => true, :class => 'text-field-pure-uuid' %>
+    <br/>
+    <br/>
+    Title: <%= text_field_tag :pure_title, '', placeholder: 'Why do white people have thin lips?',  readonly: false, :required => true, :class => 'text-field-pure-title' %>
+    <div class="field">
+      <%= label_tag(:doi_registration_agent_id, 'DOI Registration Agent') %><br>
+      <%= collection_select(:record, :doi_registration_agent_id, DoiRegistrationAgent.all, :id, :name) %>
+    </div>
+    <br/>
+    <br/>
+    DOI: <%= @display_prefixes[:doi] %> <%= text_field_tag :doi, @doi, placeholder: 'path/to/resource', :required => true, :class => 'text-field-doi' %>
+    <br/>
+    <br/>
+    which resolves to...
+    <br/>
+    <br/>
+    URL: <%= text_field_tag :url, "http://www.research.lancs.ac.uk/portal/", placeholder: 'http://lancaster.ac.uk/path/to/resource', :required => true, :class => 'text-field-url' %>
+    <br/>
+    <br/>
+    <%= submit_tag "Mint" %>
+<% end %>
+
+<% flash.clear %>

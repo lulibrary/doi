@@ -1,0 +1,32 @@
+<%= session %>
+
+<%= render 'shared/flash_messages' if !flash.empty? %>
+
+<%= @sm_state %>
+<%#= @find_state %>
+<br/>
+
+
+<%#= session[:pure_dataset_summary].inspect %>
+
+<% @records.each do |record| %>
+    <%= link_to 'Edit', edit_doi_path(id: record.id) %> <!--(id: record.id, doi: record.doi)
+    <%#= link_to 'Metadata', edit_metadata_path(id: record.id) %>
+    <%#= record.doi %> <%#= record.url %> <%#= record.pure_id %> <%#= record.pure_uuid %> <%#= record.pure_title %>
+    <br/>
+<% end %>
+
+
+
+<!--<br/>-->
+<%#= @records.inspect %>
+<% flash.clear %>
+
+<%# if @manage_doi_mode == 'edit' %>
+    <!--edit-->
+    <%#= link_to 'Edit DOI', :edit_doi_path(id: record.id) %>
+<%# end %>
+<%# if @manage_doi_mode == 'create' %>
+    <!--create-->
+    <%#= link_to 'Create DOI', :new_doi %>
+<%# end %>

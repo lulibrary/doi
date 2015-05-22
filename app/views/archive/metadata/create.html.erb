@@ -1,0 +1,25 @@
+<%= render 'shared/flash_messages' if !flash.empty? %>
+<%#= params.inspect %>
+<%#= @xml %>
+<%= @status %> for <%= @doi %>
+
+<% if @debug %>
+    Class: <%= @response_class %><br/>
+    <br/>
+    <% if @headers %>
+        REQUEST
+        <br/>
+        <%= @headers[:request].each do |key, value|%>
+            <%= "#{key}: #{value}" %>
+            <br/>
+        <% end %>
+        <br/>
+        <br/>
+        RESPONSE
+        <br/>
+        <%= @headers[:response].each do |key, value|%>
+            <%= "#{key}: #{value}" %>
+            <br/>
+        <% end %>
+    <% end %>
+<% end %>

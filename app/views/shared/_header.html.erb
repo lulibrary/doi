@@ -1,0 +1,19 @@
+<div class="header">
+
+  <div class="app-title">
+    <%= link_to 'Mint', :root %>
+  </div>
+
+  <div class="datacite-logo">
+    <img src="/assets/datacite-logo.png"/>
+  </div>
+
+  <div class="lancs-logo-separator">|</div>
+
+  <div class="lancs-logo">
+    <%= link_to image_tag('lancs-logo.png'), 'http://www.lancaster.ac.uk/' %>
+  </div>
+
+</div>
+
+<%= render 'shared/flash_messages' if !flash.empty? %>

@@ -1,0 +1,44 @@
+.header {
+  background-color: #d3ffcd;
+  padding: 15px;
+  margin-bottom: 50px;
+  height: 60px;
+}
+
+.lancs-logo {
+  float: left;
+  margin-top: 20px;
+  clear: right;
+}
+
+.lancs-logo img{
+  height: 30px;
+}
+
+.lancs-logo-separator {
+  font-size: 200%;
+  color: green;
+  float: left;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin-top: 5px;
+}
+
+.datacite-logo img{
+  height: 50px;
+  margin-left: 10px;
+  margin-top: 5px;
+  float: left;
+}
+.app-title {
+  margin-top: -5px;
+  float: left;
+//  padding-bottom: 40px;
+}
+.app-title a {
+  font-size: 300%;
+  font-weight: 900;
+  color: green;
+  text-decoration: none;
+}
+

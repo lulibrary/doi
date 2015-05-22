@@ -1,0 +1,20 @@
+<div class="wrapper">
+  <%= render 'shared/header' %>
+  <h1>DOIs</h1>
+  <%#= @sm_state %>
+<%#= @headers %>
+<%#= params.inspect %>
+<%#= @records.inspect %>
+
+<%= render 'summary_record_vertical' %>
+
+  <br>
+  <div class="apple_pagination">
+    <%= will_paginate @records, :container => false %>
+  </div>
+  <br>
+  <br>
+<%= link_to 'Search', :dois_search, :class => 'pure-button' %>
+</div>
+
+<% flash.clear %>

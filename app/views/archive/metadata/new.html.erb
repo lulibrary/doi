@@ -1,0 +1,22 @@
+<%= render 'shared/flash_messages' if !flash.empty? %>
+<h3>Update metadata for an existing DOI at Datacite</h3>
+<%= form_tag(:metadata_create, doi: @doi) do %>
+    DOI: <%#= @display_prefixes[:doi] %><%= text_field_tag :doi, @doi, placeholder: 'doi', readonly: true, :required => true, :class => 'text-field-doi' %>
+    <br/>
+    <br/>
+    Creators
+    <br/>
+    <div class="input_fields_wrap">
+      <button class="add_creator_name_field_button">Add More Creators</button>
+      <div><input type="text" name="creatorName[]" placeholder="Creator Name" required></div>
+    </div>
+    Titles
+    <br/>
+    Title: <%= text_field_tag :title, "", placeholder: 'Title', :required => true %>
+    <br/>
+    Publisher: <%= text_field_tag :publisher, "", placeholder: 'Publisher', :required => true %>
+    <br/>
+    Publication Year: <%= text_field_tag :publicationYear, "", placeholder: 'Publication Year', :required => true %>
+    <br/>
+    <%= submit_tag "Update Metadata" %>
+<% end %>

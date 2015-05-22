@@ -1,0 +1,17 @@
+<div class="wrapper">
+  <%= render 'shared/header' %>
+<h1>Search for a DOI</h1>
+<%= form_tag({controller: "dois", action: "find"}, method: "post", :class => 'pure-form') do %>
+    Pure Id: <%= text_field_tag :pure_id, "", placeholder: 123456, :required => true,
+                                :class => 'pure-input-1-4 pure-input-rounded', type: :number %>
+    <%= submit_tag "Search", :class => 'pure-button pure-button-primary' %>
+<% end %>
+
+<br/>
+<br/>
+<%= link_to 'Show all', :dois, :class => 'pure-button' %>
+
+  <%= render 'shared/footer' %>
+</div>
+
+<% flash.clear %>

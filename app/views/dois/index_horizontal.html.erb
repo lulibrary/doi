@@ -1,0 +1,73 @@
+<div class="wrapper">
+  <%= render 'shared/header' %>
+  <h1>DOIs</h1>
+  <%#= @sm_state %>
+<%#= @headers %>
+<%#= params.inspect %>
+<%#= @records.inspect %>
+
+<table border="1" class="pure-table pure-table-horizontal">
+  <thead>
+  <tr>
+    <th>Pure Id</th>
+    <th>Title</th>
+    <th>Creator</th>
+    <th>DOI</th>
+    <th>URL</th>
+    <th>Edit</th>
+    <th>Update</th>
+    <!--
+    <th>Registration Agent</th>
+    <th>Resource Type</th>
+    <th>DOI Created At</th>
+    <th>DOI Created by</th>
+    <th>URL Updated At</th>
+    <th>URL Updated by</th>
+    <th>Metadata Updated At</th>
+    <th>Metadata Updated By</th>-->
+  </tr>
+  </thead>
+
+  <tbody>
+  <% @records.each do |record| %>
+      <tr>
+        <td><%= record.pure_id %></td>
+        <td><%= record.title %></td>
+        <td><%= record.creator_name %></td>
+        <td><%= record.doi %></td>
+        <td><%= record.url %></td>
+        <td><%= link_to 'URL', edit_doi_path(id: record.id), :class => 'pure-button' %></td>
+        <td>
+          <%= form_tag('/dois/' + record.id.to_s + '/metadata/') do %>
+              <%= submit_tag "Metadata", :class => 'pure-button pure-button-primary' %>
+          <% end %>
+        </td>
+
+
+
+
+        <!--
+        <td><%= record.doi_registration_agent.name %></td>
+        <td><%= record.resource_type.name %></td>
+        <td><%= record.doi_created_at %></td>
+        <td><%= record.doi_created_by %></td>
+        <td><%= record.url_updated_at %></td>
+        <td><%= record.url_updated_by %></td>
+        <td><%= record.metadata_updated_at %></td>
+        <td><%= record.metadata_updated_by %></td>-->
+      </tr>
+  <% end %>
+  </tbody>
+</table>
+  <br>
+  <div class="apple_pagination">
+    <%= will_paginate @records, :container => false %>
+  </div>
+
+<%#= link_to 'New Account', new_account_path %>
+  <br>
+  <br>
+<%= link_to 'Search', :dois_search, :class => 'pure-button' %>
+</div>
+
+<% flash.clear %>
