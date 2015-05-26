@@ -23,10 +23,4 @@ end
 
 # ResourceType
 
-# comma separated list, append new ones
-resource_type_list = ['Dataset']
-
-resource_type_list.each do |name|
-  r = ResourceType.find_or_initialize_by(name: name)
-  r.save!
-end
+ResourceType.create(name: 'Dataset', doi_name: 'researchdata')
