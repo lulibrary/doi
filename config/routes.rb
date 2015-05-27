@@ -1,5 +1,5 @@
 Rails.application.routes.draw do
-  
+
   # with prefix
   scope "doi" do
     root 'dois#search'

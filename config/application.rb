@@ -21,8 +21,6 @@ module Doi
     # config.i18n.default_locale = :de
 
     config.autoload_paths += %W(#{config.root}/lib)
-
-    # aac - set sub directory
-    config.relative_url_root = "/doi"
+    
   end
 end
