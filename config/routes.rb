@@ -1,13 +1,10 @@
 Rails.application.routes.draw do
 
-  # with prefix
-  scope "doi" do
     root 'dois#search'
     get 'dois/search'
     post 'dois/find'
     post 'dois/:id/metadata' => 'dois#edit_metadata', as: :edit_metadata
     resources 'dois'
-  end
 
 
 
