@@ -17,6 +17,7 @@ in a local database.
 Supported DOI registration agents
 -
 ![](https://www.datacite.org/sites/all/themes/datacite/logo.png)
+
 Mint currently works with DataCite which provides DOIs for dataset publications.
 It could be extended to work with other agents although any variation in the
 APIs would need to be taken into account.
