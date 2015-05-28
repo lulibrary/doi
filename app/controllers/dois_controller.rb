@@ -86,7 +86,8 @@ class DoisController < ApplicationController
     doi = build_doi(identifier: ENV['DATACITE_DOI_IDENTIFIER'],
                     prefix: ENV['DATACITE_DOI_PREFIX'], path: path)
 
-    url = params[:url]
+    # url = params[:url]
+    url = ENV['DATACITE_URL_PREFIX'] + '/' + doi_suffix + '-' + next_id.to_s
     resource = ENV['DATACITE_ENDPOINT'] + '/doi/' + doi
     username = ENV['DATACITE_USERNAME']
     password = ENV['DATACITE_PASSWORD']
