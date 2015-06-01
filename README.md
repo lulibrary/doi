@@ -40,11 +40,11 @@ Database initialization
 -
 Create the database tables:
 ```
-$ rake db:migrate
+$ rake db:migrate ($ rake db:migrate RAILS_ENV="production", for production)
 ```
 Populate lookup tables:
 ```
-$ rake db:seed
+$ rake db:seed ($ rake db:seed RAILS_ENV="production", for production)
 ```
 
 
