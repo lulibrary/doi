@@ -1,4 +1,5 @@
 require "uri"
+require "time"
 
 class DoisController < ApplicationController
   include NetHttpHelper
@@ -12,16 +13,21 @@ class DoisController < ApplicationController
     password = ENV['PURE_PASSWORD']
     pem = File.read(ENV['PEM'])
     response = get_remote_metadata_pure(endpoint, username, password, pem)
+    # logger.info endpoint + ' ' + response.body
 
     if pure_dataset_exists?(response.body)
       sm.pure_dataset_found
+      # logger.info 'Found ' + endpoint
     else
       sm.pure_dataset_not_found
+      # logger.info 'NOT Found ' + endpoint
     end
 
     if sm.state == 'awaiting_pure_verification'
       redirect_to :back,
-                  :flash => { :error => 'Id not found for a dataset in Pure' }
+                  :flash => { :error => 'Id not found for a dataset in Pure',
+                              :pure_response => response.inspect
+                  }
     end
 
     @records = Record.where("pure_id = ?", params[:pure_id])
@@ -259,6 +265,23 @@ class DoisController < ApplicationController
   end
 
   def pure_dataset_exists?(xml)
+    return pure_native_dataset_exists?(xml)
+    # return pure_local_dataset_exists?(xml)
+  end
+
+  def pure_native_dataset_exists?(xml)
+    doc = Nokogiri::XML(xml)
+    # ns = doc.collect_namespaces
+    ns = {"xmlns:core" =>
+              "http://atira.dk/schemas/pure4/model/core/stable"}
+    # logger.info '**** XPATH RESULT ' + doc.xpath("//core:result/core:content", ns).length.to_s
+    if doc.xpath("//core:result/core:content", ns).empty?
+      return false
+    end
+    return true
+  end
+
+  def pure_local_dataset_exists?(xml)
     doc = Nokogiri::XML(xml)
     # ns = doc.collect_namespaces
     ns = {"xmlns:a" =>
@@ -356,6 +379,22 @@ class DoisController < ApplicationController
   # METADATA
 
   def pure_dataset_summary(pure_dataset_metadata)
+    return pure_native_dataset_summary(pure_dataset_metadata)
+    # return pure_local_dataset_summary(pure_dataset_metadata)
+  end
+
+  def pure_native_dataset_summary(pure_dataset_metadata)
+    doc = Nokogiri::XML(pure_dataset_metadata)
+    ns = doc.collect_namespaces
+    summary = {}
+    summary['title'] = doc.xpath("//stab:title/core:localizedString", ns).text
+    creator_first_name = doc.xpath("//stab:persons/*[1]/person-template:name/core:firstName", ns).text
+    creator_last_name = doc.xpath("//stab:persons/*[1]/person-template:name/core:lastName", ns).text
+    summary['creator_name'] = creator_last_name + ', ' + creator_first_name
+    summary
+  end
+
+  def pure_local_dataset_summary(pure_dataset_metadata)
     doc = Nokogiri::XML(pure_dataset_metadata)
     ns = doc.collect_namespaces
     summary = {}
@@ -365,6 +404,43 @@ class DoisController < ApplicationController
   end
 
   def crosswalk_pure_to_datacite_dataset_metadata(doi, pure_dataset_metadata)
+    return crosswalk_pure_native_to_datacite_dataset_metadata(doi, pure_dataset_metadata)
+    # return crosswalk_pure_local_to_datacite_dataset_metadata(doi, pure_dataset_metadata)
+  end
+
+  def crosswalk_pure_native_to_datacite_dataset_metadata(doi, pure_dataset_metadata)
+    doc = Nokogiri::XML(pure_dataset_metadata)
+    ns = doc.collect_namespaces
+
+    builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
+      xml.resource( 'xmlns' => 'http://datacite.org/schema/kernel-3',
+                    'xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance',
+                    'xsi:schemaLocation' => 'http://datacite.org/schema/kernel-3 http://schema.datacite.org/meta/kernel-3/metadata.xsd'
+      ) {
+        xml.identifier doi, :identifierType => 'DOI'
+        xml.creators {
+        creator_path = "//stab:dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString='Creator']"
+          doc.xpath(creator_path, ns).each do |creator|
+            xml.creator {
+              xml.creatorName creator.at_xpath("person-template:name/core:lastName", ns).text + ', ' + creator.at_xpath("person-template:name/core:firstName", ns).text
+            }
+          end
+        }
+        xml.titles {
+          xml.title doc.xpath("//stab:title/core:localizedString", ns).text
+        }
+        xml.publisher ENV['ORGANISATION']
+        t = Time.parse(doc.xpath("//core:result/core:content/core:created", ns).text)
+        xml.publicationYear t.strftime("%Y")
+        xml.resourceType 'Dataset', :resourceTypeGeneral => 'Dataset'
+      }
+    end
+    logger.info builder.to_xml
+    builder.to_xml
+
+  end
+
+  def crosswalk_pure_local_to_datacite_dataset_metadata(doi, pure_dataset_metadata)
     doc = Nokogiri::XML(pure_dataset_metadata)
     ns = doc.collect_namespaces
 
@@ -398,6 +474,7 @@ class DoisController < ApplicationController
     password = ENV['PURE_PASSWORD']
     pem = File.read(ENV['PEM'])
     response = get_remote_metadata_pure(endpoint, username, password, pem)
+
     if response.code != '200'
       return 'Pure ' + response.code + ' ' + response.body
     end
@@ -465,6 +542,42 @@ class DoisController < ApplicationController
   end
 
   def get_remote_metadata_pure(endpoint, username, password, pem)
+    return get_remote_metadata_pure_native(endpoint, username, password, pem)
+    # get_remote_metadata_pure_local(endpoint, username, password, pem)
+  end
+
+  def get_remote_metadata_pure_native(endpoint, username, password, pem)
+    uri = URI.parse(endpoint)
+    http = Net::HTTP.new(uri.host, uri.port)
+    # http.use_ssl = true
+    # http.cert = OpenSSL::X509::Certificate.new(pem)
+    # http.key = OpenSSL::PKey::RSA.new(pem)
+    # http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+    req = Net::HTTP::Get.new(uri)
+
+    # Pure API does not use Basic word before base64 encoded string!
+    # req.basic_auth username, "#{password}"
+    auth = Base64::encode64(username+':'+"#{password}")
+    req.initialize_http_header({'Accept' => 'application/xml',
+                                'Authorization' => 'Basic ' + auth
+                               })
+
+    req.content_type = 'application/xml;charset=UTF-8'
+
+    response = http.request(req)
+    @debug = true
+    if @debug
+      @response_class = response.class
+      @headers = {}
+      @headers[:request] = headers(req)
+      @headers[:response] = headers(response)
+    end
+
+    response
+
+  end
+
+  def get_remote_metadata_pure_local(endpoint, username, password, pem)
     uri = URI.parse(endpoint)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
@@ -493,7 +606,6 @@ class DoisController < ApplicationController
     response
 
   end
-
 
   # UTILS
 

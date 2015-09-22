@@ -1,5 +1,6 @@
 <div class="wrapper">
   <%= render 'shared/header' %>
+
 <h1>Search for a DOI</h1>
 <%= form_tag({controller: "dois", action: "find"}, method: "post", :class => 'pure-form') do %>
     Pure Id: <%= text_field_tag :pure_id, "", placeholder: 123456, :required => true,
