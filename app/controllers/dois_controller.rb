@@ -423,15 +423,53 @@ class DoisController < ApplicationController
           doc.xpath(creator_path, ns).each do |creator|
             xml.creator {
               xml.creatorName creator.at_xpath("person-template:name/core:lastName", ns).text + ', ' + creator.at_xpath("person-template:name/core:firstName", ns).text
+              xml.affiliation creator.at_xpath("person-template:organisations//organisation-template:name/core:localizedString", ns).text
             }
           end
         }
+
+        xml.contributors {
+          # Pure to DataCite types map
+          contributorTypes = {
+            'Owner' => 'Other',
+            'Contributor' => 'Other',
+            'Data Collector' => 'DataCollector',
+            'Data Manager' => 'DataManager',
+            'Distributor' => 'Distributor',
+            'Editor' => 'Editor',
+            'Funder' => 'Funder',
+            'Producer' => 'Producer',
+            'Rights Holder' => 'RightsHolder',
+            'Sponsor' => 'Sponsor',
+            'Supervisor' => 'Supervisor',
+            'Other' => 'Other'
+          }
+          contributorTypes.each do |contributorTypePure, contributorTypeDataCite|
+            contributor_path = "//stab:dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString='"+contributorTypePure+"']"
+            doc.xpath(contributor_path, ns).each do |contributor|
+              xml.contributor(:contributorType => contributorTypeDataCite) {
+                xml.contributorName contributor.at_xpath("person-template:name/core:lastName", ns).text + ', ' + contributor.at_xpath("person-template:name/core:firstName", ns).text
+                xml.affiliation contributor.at_xpath("person-template:organisations//organisation-template:name/core:localizedString", ns).text
+              }
+            end
+          end
+        }
+
         xml.titles {
           xml.title doc.xpath("//stab:title/core:localizedString", ns).text
         }
         xml.publisher ENV['ORGANISATION']
         t = Time.parse(doc.xpath("//core:result/core:content/core:created", ns).text)
         xml.publicationYear t.strftime("%Y")
+        keyword_group_path = "//core:content/core:keywordGroups/core:keywordGroup/core:keyword/core:userDefinedKeyword/core:freeKeyword"
+        xml.subjects {
+          doc.xpath(keyword_group_path, ns).each do |keyword_group|
+            words = keyword_group.text.split(',')
+            words.each do |word|
+              xml.subject word
+            end
+          end
+        }
         xml.resourceType 'Dataset', :resourceTypeGeneral => 'Dataset'
       }
     end
