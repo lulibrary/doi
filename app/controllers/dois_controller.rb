@@ -422,8 +422,10 @@ class DoisController < ApplicationController
         creator_path = "//stab:dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString='Creator']"
           doc.xpath(creator_path, ns).each do |creator|
             xml.creator {
-              xml.creatorName creator.at_xpath("person-template:name/core:lastName", ns).text + ', ' + creator.at_xpath("person-template:name/core:firstName", ns).text
-              xml.affiliation creator.at_xpath("person-template:organisations//organisation-template:name/core:localizedString", ns).text
+              xml.creatorName creator.xpath("person-template:name/core:lastName", ns).text + ', ' + creator.xpath("person-template:name/core:firstName", ns).text
+              creator.xpath("person-template:organisations//organisation-template:name/core:localizedString", ns).each do |affiliation|
+                xml.affiliation affiliation.text
+              end
             }
           end
         }
@@ -448,8 +450,10 @@ class DoisController < ApplicationController
             contributor_path = "//stab:dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString='"+contributorTypePure+"']"
             doc.xpath(contributor_path, ns).each do |contributor|
               xml.contributor(:contributorType => contributorTypeDataCite) {
-                xml.contributorName contributor.at_xpath("person-template:name/core:lastName", ns).text + ', ' + contributor.at_xpath("person-template:name/core:firstName", ns).text
-                xml.affiliation contributor.at_xpath("person-template:organisations//organisation-template:name/core:localizedString", ns).text
+                xml.contributorName contributor.xpath("person-template:name/core:lastName", ns).text + ', ' + contributor.xpath("person-template:name/core:firstName", ns).text
+                contributor.xpath("person-template:organisations//organisation-template:name/core:localizedString", ns).each do |affiliation|
+                  xml.affiliation affiliation.text
+                end
               }
             end
           end
@@ -459,7 +463,7 @@ class DoisController < ApplicationController
           xml.title doc.xpath("//stab:title/core:localizedString", ns).text
         }
         xml.publisher ENV['ORGANISATION']
-        t = Time.parse(doc.xpath("//core:result/core:content/core:created", ns).text)
+        t = Time.parse(doc.xpath("//core:content/core:created", ns).text)
         xml.publicationYear t.strftime("%Y")
         keyword_group_path = "//core:content/core:keywordGroups/core:keywordGroup/core:keyword/core:userDefinedKeyword/core:freeKeyword"
         xml.subjects {
@@ -471,9 +475,43 @@ class DoisController < ApplicationController
           end
         }
         xml.resourceType 'Dataset', :resourceTypeGeneral => 'Dataset'
+        xml.alternateIdentifiers {
+          xml.alternateIdentifier doc.xpath("//core:content/@uuid", ns).text, :alternateIdentifierType => 'Pure UUID'
+        }
+        xml.dates {
+          year = doc.xpath("//stab:dateMadeAvailable/core:year", ns).text
+          month = doc.xpath("//stab:dateMadeAvailable/core:month", ns).text
+          day = doc.xpath("//stab:dateMadeAvailable/core:day", ns).text
+          ymd = ''
+          if !year.empty?
+            ymd << year
+          end
+          if !month.empty?
+            # Add leading zero to convert to ISO 8601
+            if month.length < 2
+              month.insert(0, '0')
+            end
+            ymd << '-' + month
+          end
+          if !day.empty?
+            # Add leading zero to convert to ISO 8601
+            if day.length < 2
+              day.insert(0, '0')
+            end
+            ymd << '-' + day
+          end
+          if ymd
+            xml.date ymd, :dateType => 'Available'
+          end
+        }
+
+        locale = doc.xpath("//stab:title/core:localizedString/@locale", ns).text
+        locale = locale.gsub('_', '-').downcase
+        logger.info locale
+        xml.language locale
       }
     end
-    logger.info builder.to_xml
+    # logger.info builder.to_xml
     builder.to_xml
 
   end
