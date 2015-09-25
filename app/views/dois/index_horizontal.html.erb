@@ -9,7 +9,8 @@
 <table border="1" class="pure-table pure-table-horizontal">
   <thead>
   <tr>
-    <th>Pure Id</th>
+    <th>Pure ID</th>
+    <th>Pure UUID</th>
     <th>Title</th>
     <th>Creator</th>
     <th>DOI</th>
@@ -32,6 +33,7 @@
   <% @records.each do |record| %>
       <tr>
         <td><%= record.pure_id %></td>
+        <td><%= record.pure_uuid %></td>
         <td><%= record.title %></td>
         <td><%= record.creator_name %></td>
         <td><%= record.doi %></td>

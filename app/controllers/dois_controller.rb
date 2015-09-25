@@ -391,6 +391,7 @@ class DoisController < ApplicationController
     creator_first_name = doc.xpath("//stab:persons/*[1]/person-template:name/core:firstName", ns).text
     creator_last_name = doc.xpath("//stab:persons/*[1]/person-template:name/core:lastName", ns).text
     summary['creator_name'] = creator_last_name + ', ' + creator_first_name
+    summary['pure_uuid'] = doc.xpath("//core:content/@uuid", ns).text
     summary
   end
 
@@ -507,7 +508,6 @@ class DoisController < ApplicationController
 
         locale = doc.xpath("//stab:title/core:localizedString/@locale", ns).text
         locale = locale.gsub('_', '-').downcase
-        logger.info locale
         xml.language locale
       }
     end
@@ -587,6 +587,7 @@ class DoisController < ApplicationController
     record.metadata_updated_by = get_user
     record.doi_registration_agent_id = agent_id
     record.resource_type_id = resource_type_id
+    record.pure_uuid = params[:pure_uuid]
     record.save
 
     increment_doi_registration_agent_count(agent_id)
@@ -631,8 +632,6 @@ class DoisController < ApplicationController
     # http.verify_mode = OpenSSL::SSL::VERIFY_PEER
     req = Net::HTTP::Get.new(uri)
 
-    # Pure API does not use Basic word before base64 encoded string!
-    # req.basic_auth username, "#{password}"
     auth = Base64::encode64(username+':'+"#{password}")
     req.initialize_http_header({'Accept' => 'application/xml',
                                 'Authorization' => 'Basic ' + auth

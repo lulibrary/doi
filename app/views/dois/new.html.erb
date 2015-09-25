@@ -10,6 +10,12 @@
                          :required => true,
                          :class => 'text-field-pure-id',
                          :hidden => true %>
+      <%= text_field_tag :pure_uuid, params[:pure_uuid],
+                         placeholder: 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx',
+                         readonly: true,
+                         :required => true,
+                         :class => 'text-field-pure-id',
+                         :hidden => true %>
       <%= text_field_tag :title, params[:title],
                          placeholder: 'TitleHere',
                          readonly: true,
