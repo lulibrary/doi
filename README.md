@@ -15,7 +15,7 @@ in a local database.
 
 Supported DOI registration agents
 -
-![DataCite logo](https://www.datacite.org/sites/all/themes/datacite/logo.png?raw=true)
+![DataCite logo](/app/assets/images/datacite-logo.png)
 
 Mint currently works with DataCite which provides DOIs for dataset publications.
 DataCite's metadata schema version 3.1 is supported.
