@@ -2,8 +2,7 @@ Mint
 ==
 About
 -
-Mint is a Rails app[^developer] for minting Digital Object Identifiers (DOIs).
- [^developer]: Adrian Albin-Clark, May 2015.
+Mint is a Rails app for minting Digital Object Identifiers (DOIs).
 
 How does it work?
 -
@@ -16,7 +15,7 @@ in a local database.
 
 Supported DOI registration agents
 -
-![](https://www.datacite.org/sites/all/themes/datacite/logo.png)
+![DataCite logo](https://www.datacite.org/sites/all/themes/datacite/logo.png)
 
 Mint currently works with DataCite which provides DOIs for dataset publications.
 DataCite's metadata schema version 3.1 is supported.
