@@ -19,8 +19,7 @@ Supported DOI registration agents
 ![](https://www.datacite.org/sites/all/themes/datacite/logo.png)
 
 Mint currently works with DataCite which provides DOIs for dataset publications.
-It could be extended to work with other agents although any variation in the
-APIs would need to be taken into account.
+DataCite's metadata schema version 3.1 is supported.
 
 
 Ruby version
@@ -47,16 +46,6 @@ Populate lookup tables:
 $ rake db:seed ($ rake db:seed RAILS_ENV="production", for production)
 ```
 
-
-Deployment instructions
--
-Change to the directory where this repository will be placed.
-
-Clone the repository into that directory.
-```
-$ git clone https://aalbinclark@bitbucket.org/ditlul/doi.git
-```
-
 Configuration
 -
 #### Environment
@@ -65,43 +54,8 @@ dotenv. For a  Rails development environment name the file
 ```env.development```. For  a production environment name the file
 ```env.production```. An example file is provided in the root
 ```env.environment.example``` which is the development version with the
-credentials removed:
-```
-// DataCite API
-DATACITE_ENDPOINT = https://test.datacite.org/mds
-DATACITE_RESOURCE_DOI = /doi
-DATACITE_RESOURCE_METADATA = /metadata
-DATACITE_RESOURCE_MEDIA = /media
-DATACITE_USERNAME = username
-DATACITE_PASSWORD = password
+credentials removed.
 
-// Datacite DOI for institution domains
-DATACITE_DOI_IDENTIFIER = 10.4124
-
-// Content in DataCite DOI after identifier
-DATACITE_DOI_PREFIX = lancaster
-
-// Content for URL before integer
-DATACITE_URL_PREFIX = http://www.lancaster.ac.uk/library/rdm/data-catalogue
-
-// Pure Web Services API
-PURE_ENDPOINT = https://ciswebtest.lancaster.ac.uk/purewebservices/datasets/datasetid/
-PURE_USERNAME = username
-PURE_PASSWORD = password
-
-// Local database
-DB_ADAPTER = postgresql
-DB_NAME = doi
-DB_HOST = lib-dev.lancs.ac.uk
-DB_USERNAME = username
-DB_PASSWORD = password
-
-// SSL
-PEM = /home/albincla/ssl/doi.pem
-
-// Rails secret
-SECRET_KEY_BASE = 2bee8666341e6ecf0a50c1b3f5ddca427237dff2cc275c1de1891d2b434925cc39a272455c6ca82bd35f0db80a59f9060f6daad2241f1b72487ed7b347d2ce88
-```
 #### Certificate
 The environment file references a PEM file which is used for SSL connections
 with DOI Registration Agents and Pure Web Services.
