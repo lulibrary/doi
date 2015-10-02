@@ -75,6 +75,14 @@ Generate a new one:
 $ rake secret
 ```
 
+Batch update
+-
+Use the Rails console to update all the current metadata records. Output is
+saved to the environment log.
+```
+load './scripts/batch.rb'
+```
+
 Troubleshooting
 -
 Mint generates DOIs with an integer as the last part which is formed by

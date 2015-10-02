@@ -4,6 +4,10 @@ require "time"
 class DoisController < ApplicationController
   include NetHttpHelper
 
+  def search
+    @debug_endpoints = ENV['DEBUG_ENDPOINTS']
+  end
+
   def find
     sm = DoiFindStateMachine.new
 
@@ -196,10 +200,16 @@ class DoisController < ApplicationController
     record.save
   end
 
-  def edit_metadata
+  def edit_metadata_post
+    edit_metadata(params[:id])
+  end
+
+  def edit_metadata(id, batch_mode: false)
+
+    success = false
 
     # LOCAL DB
-    record = Record.find(params[:id])
+    record = Record.find(id)
     pure_id = record.pure_id
     doi = record.doi
 
@@ -210,16 +220,18 @@ class DoisController < ApplicationController
     pem = File.read(ENV['PEM'])
 
     response = get_remote_metadata_pure(endpoint, username, password, pem)
-    if response.code != '200'
-      redirect_to :back,
-                  :flash => { :error => response.code + ' ' + response.body }
-      return
+    pure_native_dataset_exists = pure_dataset_exists?(response.body)
+    if response.code != '200' or !pure_native_dataset_exists
+      if !batch_mode
+        redirect_to :back,
+                    :flash => { :error => response.code + ' ' + response.body }
+      end
+      return success
     end
     metadata = response.body
 
     datacite_metadata = crosswalk_pure_to_datacite_dataset_metadata(doi,
                                                                      metadata)
-
     # DATACITE
     endpoint = ENV['DATACITE_ENDPOINT'] + ENV['DATACITE_RESOURCE_METADATA']
     username = ENV['DATACITE_USERNAME']
@@ -228,19 +240,65 @@ class DoisController < ApplicationController
     response = update_remote_metadata(endpoint, datacite_metadata, username,
                                       password, pem)
     if response.code != '201'
-      redirect_to :back,
-                  :flash => { :error => response.code + ' ' + response.body }
-      return
+      if !batch_mode
+        redirect_to :back,
+                    :flash => { :error => response.code + ' ' + response.body }
+      end
+      return success
     end
-    redirect_to :root,
-                :flash => { :notice => doi + ' metadata updated' }
+    if !batch_mode
+      redirect_to :root,
+                  :flash => { :notice => doi + ' metadata updated' }
+    end
+    success = true
 
-    now = DateTime.now
-    record.metadata_updated_at = now
-    record.metadata_updated_by = get_user
-    record.save
+    if success
+      now = DateTime.now
+      record.metadata_updated_at = now
+      if batch_mode
+        user = 'batch'
+      else
+        user = get_user
+      end
+      record.metadata_updated_by = user
+      record.save
+    end
+
+    return success
   end
 
+  # convenience method
+  def batch
+    edit_metadata_batch
+  end
+
+  def edit_metadata_batch
+    logger.info ''
+    logger.info ''
+    logger.info 'Metadata batch update started.'
+    logger.info 'Success?, Pure ID, Title'
+    logger.info ''
+    records = []
+    successes = 0
+    failures = 0
+    Record.all.each do |record|
+      data = {}
+      data['record'] = record
+      data['updated'] = edit_metadata(record.id, batch_mode: true)
+      summary = data['record']['pure_id'].to_s + ', ' + data['record']['title']
+      success = data['updated'] ? '1' : '0'
+      data['updated'] ? successes+=1:failures+=1
+      msg = success + ', ' + summary
+      logger.info msg
+      records << data
+    end
+    logger.info ''
+    logger.info 'Metadata batch update finished.'
+    logger.info 'Successes - ' + successes.to_s
+    logger.info 'Failures  - ' + failures.to_s
+
+    @data = records; nil   # suppress output
+  end
 
 
   private
@@ -431,34 +489,39 @@ class DoisController < ApplicationController
           end
         }
 
-        xml.contributors {
+        # contributors (non creators)
+        non_creator_path = "//stab:dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString!='Creator']"
+        non_creator_contributor_types = doc.xpath(non_creator_path, ns)
+        if non_creator_contributor_types.count > 0
           # Pure to DataCite types map
           contributorTypes = {
-            'Owner' => 'Other',
-            'Contributor' => 'Other',
-            'Data Collector' => 'DataCollector',
-            'Data Manager' => 'DataManager',
-            'Distributor' => 'Distributor',
-            'Editor' => 'Editor',
-            'Funder' => 'Funder',
-            'Producer' => 'Producer',
-            'Rights Holder' => 'RightsHolder',
-            'Sponsor' => 'Sponsor',
-            'Supervisor' => 'Supervisor',
-            'Other' => 'Other'
+              'Owner' => 'Other',
+              'Contributor' => 'Other',
+              'Data Collector' => 'DataCollector',
+              'Data Manager' => 'DataManager',
+              'Distributor' => 'Distributor',
+              'Editor' => 'Editor',
+              'Funder' => 'Funder',
+              'Producer' => 'Producer',
+              'Rights Holder' => 'RightsHolder',
+              'Sponsor' => 'Sponsor',
+              'Supervisor' => 'Supervisor',
+              'Other' => 'Other'
           }
-          contributorTypes.each do |contributorTypePure, contributorTypeDataCite|
-            contributor_path = "//stab:dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString='"+contributorTypePure+"']"
-            doc.xpath(contributor_path, ns).each do |contributor|
-              xml.contributor(:contributorType => contributorTypeDataCite) {
-                xml.contributorName contributor.xpath("person-template:name/core:lastName", ns).text + ', ' + contributor.xpath("person-template:name/core:firstName", ns).text
-                contributor.xpath("person-template:organisations//organisation-template:name/core:localizedString", ns).each do |affiliation|
-                  xml.affiliation affiliation.text
-                end
-              }
+          xml.contributors {
+            contributorTypes.each do |contributorTypePure, contributorTypeDataCite|
+              contributor_path = "//stab:dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString='"+contributorTypePure+"']"
+              doc.xpath(contributor_path, ns).each do |contributor|
+                xml.contributor(:contributorType => contributorTypeDataCite) {
+                  xml.contributorName contributor.xpath("person-template:name/core:lastName", ns).text + ', ' + contributor.xpath("person-template:name/core:firstName", ns).text
+                  contributor.xpath("person-template:organisations//organisation-template:name/core:localizedString", ns).each do |affiliation|
+                    xml.affiliation affiliation.text
+                  end
+                }
+              end
             end
-          end
-        }
+          }
+        end
 
         xml.titles {
           xml.title doc.xpath("//stab:title/core:localizedString", ns).text
@@ -466,15 +529,19 @@ class DoisController < ApplicationController
         xml.publisher ENV['ORGANISATION']
         t = Time.parse(doc.xpath("//core:content/core:created", ns).text)
         xml.publicationYear t.strftime("%Y")
+
         keyword_group_path = "//core:content/core:keywordGroups/core:keywordGroup/core:keyword/core:userDefinedKeyword/core:freeKeyword"
-        xml.subjects {
-          doc.xpath(keyword_group_path, ns).each do |keyword_group|
-            words = keyword_group.text.split(',')
-            words.each do |word|
-              xml.subject word
+        if doc.xpath(keyword_group_path, ns).count > 0
+          xml.subjects {
+            doc.xpath(keyword_group_path, ns).each do |keyword_group|
+              words = keyword_group.text.split(',')
+              words.each do |word|
+                xml.subject word
+              end
             end
-          end
-        }
+          }
+        end
+
         xml.resourceType 'Dataset', :resourceTypeGeneral => 'Dataset'
         xml.alternateIdentifiers {
           xml.alternateIdentifier doc.xpath("//core:content/@uuid", ns).text, :alternateIdentifierType => 'Pure UUID'

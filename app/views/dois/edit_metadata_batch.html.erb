@@ -1,0 +1,17 @@
+<div class="wrapper">
+  <%= render 'shared/header' %>
+  <h1>Metadata update report</h1>
+  <% @data.each do |d|  %>
+      <div>
+      <% if d['updated'] %>
+      ERROR --
+      <% end %>
+      <%= d['record']['pure_id'] %>, <%= d['record']['title'] %>
+        </div>
+  <% end %>
+  <br/>
+  <br/>
+  <%= link_to 'Search', :dois_search, :class => 'pure-button' %>
+  <%= render 'shared/environment' %>
+</div>
+<% flash.clear %>
