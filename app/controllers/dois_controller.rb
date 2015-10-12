@@ -526,7 +526,21 @@ class DoisController < ApplicationController
         xml.titles {
           xml.title doc.xpath("//stab:title/core:localizedString", ns).text
         }
-        xml.publisher ENV['ORGANISATION']
+        # <descriptions>
+        # <description xml:lang="en-us" descriptionType="Abstract">
+        #     XML example of all DataCite Metadata Schema v3.1 properties.
+        #     </description>
+        # </descriptions>
+
+        description_path = "//stab:descriptions//extensions-core:value/core:localizedString"
+        if doc.xpath(description_path, ns).count > 0
+          xml.descriptions {
+            xml.description doc.xpath(description_path, ns).text, :descriptionType => 'Abstract'
+          }
+        end
+
+        xml.publisher doc.xpath("//stab:publisher//publisher-template:name", ns).text
+
         t = Time.parse(doc.xpath("//core:content/core:created", ns).text)
         xml.publicationYear t.strftime("%Y")
 
@@ -576,6 +590,36 @@ class DoisController < ApplicationController
         locale = doc.xpath("//stab:title/core:localizedString/@locale", ns).text
         locale = locale.gsub('_', '-').downcase
         xml.language locale
+
+        geoLocationPlace = doc.xpath("//stab:geographicalCoverage/core:localizedString", ns).text
+        # will need to test for numerical geolocations when implemented in order to create a <geoLocations> element
+        if geoLocationPlace.length > 0
+          xml.geoLocations {
+              xml.geoLocation {
+                xml.geoLocationPlace geoLocationPlace
+              }
+          }
+        end
+
+        # sizes
+        sizes = doc.xpath("//stab:documents//core:size", ns)
+        if sizes.count > 0
+          xml.sizes {
+            sizes.each do |size|
+              xml.size size.text
+            end
+          }
+        end
+
+        # formats
+        formats = doc.xpath("//stab:documents//core:mimeType", ns)
+        if formats.count > 0
+          xml.formats {
+            formats.each do |format|
+              xml.format format.text
+            end
+          }
+        end
       }
     end
     # logger.info builder.to_xml
