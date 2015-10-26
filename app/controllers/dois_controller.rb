@@ -12,7 +12,7 @@ class DoisController < ApplicationController
     sm = DoiFindStateMachine.new
 
     # fetch pure record
-    endpoint = ENV['PURE_ENDPOINT'] + params[:pure_id]
+    endpoint = ENV['PURE_ENDPOINT'] + '/datasets?rendering=xml_long&pureInternalIds.id=' + params[:pure_id]
     username = ENV['PURE_USERNAME']
     password = ENV['PURE_PASSWORD']
     pem = File.read(ENV['PEM'])
@@ -214,7 +214,7 @@ class DoisController < ApplicationController
     doi = record.doi
 
     # PURE
-    endpoint = ENV['PURE_ENDPOINT'] + pure_id.to_s
+    endpoint = ENV['PURE_ENDPOINT'] + '/datasets?rendering=xml_long&pureInternalIds.id=' + pure_id.to_s
     username = ENV['PURE_USERNAME']
     password = ENV['PURE_PASSWORD']
     pem = File.read(ENV['PEM'])
@@ -482,6 +482,13 @@ class DoisController < ApplicationController
           doc.xpath(creator_path, ns).each do |creator|
             xml.creator {
               xml.creatorName creator.xpath("person-template:name/core:lastName", ns).text + ', ' + creator.xpath("person-template:name/core:firstName", ns).text
+              uuid = creator.xpath("person-template:person/@uuid", ns).text
+              if uuid
+                orcid = pure_native_orcid(uuid)
+                if orcid
+                  xml.nameIdentifier orcid, :schemeURI => 'http://orcid.org/', :nameIdentifierScheme => 'ORCID'
+                end
+              end
               creator.xpath("person-template:organisations//organisation-template:name/core:localizedString", ns).each do |affiliation|
                 xml.affiliation affiliation.text
               end
@@ -526,16 +533,14 @@ class DoisController < ApplicationController
         xml.titles {
           xml.title doc.xpath("//stab:title/core:localizedString", ns).text
         }
-        # <descriptions>
-        # <description xml:lang="en-us" descriptionType="Abstract">
-        #     XML example of all DataCite Metadata Schema v3.1 properties.
-        #     </description>
-        # </descriptions>
-
         description_path = "//stab:descriptions//extensions-core:value/core:localizedString"
         if doc.xpath(description_path, ns).count > 0
           xml.descriptions {
-            xml.description doc.xpath(description_path, ns).text, :descriptionType => 'Abstract'
+            # xml.create_cdata description, doc.xpath(description_path, ns).text, :descriptionType => 'Abstract'
+            # Use cdata to cope with &
+            xml.description(:descriptionType => 'Abstract') {
+              xml.cdata doc.xpath(description_path, ns).text
+            }
           }
         end
 
@@ -656,7 +661,7 @@ class DoisController < ApplicationController
 
   def create_metadata(doi)
     # PURE
-    endpoint = ENV['PURE_ENDPOINT'] + params[:pure_id].to_s
+    endpoint = ENV['PURE_ENDPOINT'] + '/datasets?rendering=xml_long&pureInternalIds.id=' + params[:pure_id].to_s
     username = ENV['PURE_USERNAME']
     password = ENV['PURE_PASSWORD']
     pem = File.read(ENV['PEM'])
@@ -791,6 +796,34 @@ class DoisController < ApplicationController
 
     response
 
+  end
+
+  def pure_native_orcid(uuid)
+    endpoint = ENV['PURE_ENDPOINT'] + '/person?rendering=long&uuids.uuid=' + uuid
+    # endpoint = 'http://pure.lancs.ac.uk/ws/rest/person?rendering=long&uuids.uuid=' + uuid
+
+    username = ENV['PURE_USERNAME']
+    password = ENV['PURE_PASSWORD']
+    pem = File.read(ENV['PEM'])
+    response = get_remote_metadata_pure(endpoint, username, password, pem)
+
+    html = response.body
+
+    doc = Nokogiri::HTML(html)
+    orcid = doc.xpath("//table/tbody/tr[th='ORCID']/td").text
+    if isORCID?(orcid)
+      return orcid
+    else
+      return ''
+    end
+  end
+
+  def isORCID?(str)
+    if /^\d{4}-\d{4}-\d{4}-\d{4}$/.match(str)
+      return true
+    else
+      return false
+    end
   end
 
   # UTILS
