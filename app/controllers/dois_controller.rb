@@ -485,7 +485,7 @@ class DoisController < ApplicationController
               uuid = creator.xpath("person-template:person/@uuid", ns).text
               if uuid
                 orcid = pure_native_orcid(uuid)
-                if orcid
+                if orcid.length == 19
                   xml.nameIdentifier orcid, :schemeURI => 'http://orcid.org/', :nameIdentifierScheme => 'ORCID'
                 end
               end
@@ -521,6 +521,13 @@ class DoisController < ApplicationController
               doc.xpath(contributor_path, ns).each do |contributor|
                 xml.contributor(:contributorType => contributorTypeDataCite) {
                   xml.contributorName contributor.xpath("person-template:name/core:lastName", ns).text + ', ' + contributor.xpath("person-template:name/core:firstName", ns).text
+                  uuid = contributor.xpath("person-template:person/@uuid", ns).text
+                  if uuid
+                    orcid = pure_native_orcid(uuid)
+                    if orcid.length == 19
+                      xml.nameIdentifier orcid, :schemeURI => 'http://orcid.org/', :nameIdentifierScheme => 'ORCID'
+                    end
+                  end
                   contributor.xpath("person-template:organisations//organisation-template:name/core:localizedString", ns).each do |affiliation|
                     xml.affiliation affiliation.text
                   end
@@ -800,7 +807,6 @@ class DoisController < ApplicationController
 
   def pure_native_orcid(uuid)
     endpoint = ENV['PURE_ENDPOINT'] + '/person?rendering=long&uuids.uuid=' + uuid
-    # endpoint = 'http://pure.lancs.ac.uk/ws/rest/person?rendering=long&uuids.uuid=' + uuid
 
     username = ENV['PURE_USERNAME']
     password = ENV['PURE_PASSWORD']
