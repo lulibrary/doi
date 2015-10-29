@@ -76,7 +76,7 @@ class DoisController < ApplicationController
 
   def edit
     @record = Record.find(params[:id])
-    @display_prefixes = display_prefixes
+    # @display_prefixes = display_prefixes
   end
 
   def show
@@ -579,18 +579,18 @@ class DoisController < ApplicationController
 
   # UTILS
 
-  def display_prefixes
-    doi = ENV['DATACITE_DOI_IDENTIFIER']
-    if !ENV['DATACITE_DOI_PREFIX'].blank?
-      doi += '/' + ENV['DATACITE_DOI_PREFIX']
-    end
-    doi += '/'
-    host = ENV['URL_HOST_1'] + '/'
-    {
-        :doi => doi,
-        :url =>  host
-    }
-  end
+  # def display_prefixes
+  #   doi = ENV['DATACITE_DOI_IDENTIFIER']
+  #   if !ENV['DATACITE_DOI_PREFIX'].blank?
+  #     doi += '/' + ENV['DATACITE_DOI_PREFIX']
+  #   end
+  #   doi += '/'
+  #   host = ENV['URL_HOST_1'] + '/'
+  #   {
+  #       :doi => doi,
+  #       :url =>  host
+  #   }
+  # end
 
   # for making a random doi suffix for testing
   def token(length=16)

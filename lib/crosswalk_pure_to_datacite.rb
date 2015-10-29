@@ -140,7 +140,7 @@ module CrosswalkPureToDatacite
           end
 
           dateRangeCollected = date_range_collected(doc)
-          if dateRangeCollected.length > 0
+          if !dateRangeCollected.empty?
             xml.date dateRangeCollected, :dateType => 'Collected'
           end
         }
@@ -232,7 +232,7 @@ module CrosswalkPureToDatacite
       endDate << '-' + endDay
     end
 
-    if startDate and endDate
+    if !startDate.empty? and !endDate.empty?
       return startDate + '/' + endDate
     else
       return ''
