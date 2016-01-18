@@ -11,6 +11,8 @@ module CrosswalkPureToDatacite
     doc = Nokogiri::XML(pure_dataset_metadata)
     ns = doc.collect_namespaces
 
+    pure_dataset_response_type = get_pure_dataset_response_type(doc)
+
     builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
       xml.resource( 'xmlns' => 'http://datacite.org/schema/kernel-3',
                     'xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance',
@@ -18,7 +20,8 @@ module CrosswalkPureToDatacite
       ) {
         xml.identifier doi, :identifierType => 'DOI'
         xml.creators {
-          creator_path = "//stab:dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString='Creator']"
+          creator_path = "//" + pure_dataset_response_type +
+              ":dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString='Creator']"
           doc.xpath(creator_path, ns).each do |creator|
             xml.creator {
               xml.creatorName creator.xpath("person-template:name/core:lastName", ns).text + ', ' + creator.xpath("person-template:name/core:firstName", ns).text
@@ -37,7 +40,8 @@ module CrosswalkPureToDatacite
         }
 
         # contributors (non creators)
-        non_creator_path = "//stab:dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString!='Creator']"
+        non_creator_path = "//" + pure_dataset_response_type +
+            ":dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString!='Creator']"
         non_creator_contributor_types = doc.xpath(non_creator_path, ns)
         if non_creator_contributor_types.count > 0
           # Pure to DataCite types map
@@ -57,7 +61,7 @@ module CrosswalkPureToDatacite
           }
           xml.contributors {
             contributorTypes.each do |contributorTypePure, contributorTypeDataCite|
-              contributor_path = "//stab:dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString='"+contributorTypePure+"']"
+              contributor_path = "//" + pure_dataset_response_type + ":dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString='"+contributorTypePure+"']"
               doc.xpath(contributor_path, ns).each do |contributor|
                 xml.contributor(:contributorType => contributorTypeDataCite) {
                   xml.contributorName contributor.xpath("person-template:name/core:lastName", ns).text + ', ' + contributor.xpath("person-template:name/core:firstName", ns).text
@@ -78,20 +82,20 @@ module CrosswalkPureToDatacite
         end
 
         xml.titles {
-          xml.title doc.xpath("//stab:title/core:localizedString", ns).text
+          xml.title doc.xpath("//" + pure_dataset_response_type + ":title/core:localizedString", ns).text
         }
-        description_path = "//stab:descriptions//extensions-core:value/core:localizedString"
+        description_path = "//" + pure_dataset_response_type + ":descriptions//extensions-core:value/core:localizedString"
         if doc.xpath(description_path, ns).count > 0
           xml.descriptions {
-            # xml.create_cdata description, doc.xpath(description_path, ns).text, :descriptionType => 'Abstract'
+            xml.description doc.xpath(description_path, ns).text, :descriptionType => 'Abstract'
             # Use cdata to cope with &
-            xml.description(:descriptionType => 'Abstract') {
-              xml.cdata doc.xpath(description_path, ns).text
-            }
+            #xml.description(:descriptionType => 'Abstract') {
+            #  xml.cdata doc.xpath(description_path, ns).text
+            #}
           }
         end
 
-        xml.publisher doc.xpath("//stab:publisher//publisher-template:name", ns).text
+        xml.publisher doc.xpath("//" + pure_dataset_response_type + ":publisher//publisher-template:name", ns).text
 
         t = Time.parse(doc.xpath("//core:content/core:created", ns).text)
         xml.publicationYear t.strftime("%Y")
@@ -114,9 +118,9 @@ module CrosswalkPureToDatacite
         }
         xml.dates {
           # available
-          year = doc.xpath("//stab:dateMadeAvailable/core:year", ns).text
-          month = doc.xpath("//stab:dateMadeAvailable/core:month", ns).text
-          day = doc.xpath("//stab:dateMadeAvailable/core:day", ns).text
+          year = doc.xpath("//" + pure_dataset_response_type + ":dateMadeAvailable/core:year", ns).text
+          month = doc.xpath("//" + pure_dataset_response_type + ":dateMadeAvailable/core:month", ns).text
+          day = doc.xpath("//" + pure_dataset_response_type + ":dateMadeAvailable/core:day", ns).text
           ymd = ''
           if !year.empty?
             ymd << year
@@ -145,11 +149,11 @@ module CrosswalkPureToDatacite
           end
         }
 
-        locale = doc.xpath("//stab:title/core:localizedString/@locale", ns).text
+        locale = doc.xpath("//" + pure_dataset_response_type + ":title/core:localizedString/@locale", ns).text
         locale = locale.gsub('_', '-').downcase
         xml.language locale
 
-        geoLocationPlace = doc.xpath("//stab:geographicalCoverage/core:localizedString", ns).text
+        geoLocationPlace = doc.xpath("//" + pure_dataset_response_type + ":geographicalCoverage/core:localizedString", ns).text
         # will need to test for numerical geolocations when implemented in order to create a <geoLocations> element
         if geoLocationPlace.length > 0
           xml.geoLocations {
@@ -160,8 +164,8 @@ module CrosswalkPureToDatacite
         end
 
         # sizes
-        sizes = doc.xpath("//stab:documents//core:size", ns)
-        if sizes.count > 0
+        sizes = doc.xpath("//" + pure_dataset_response_type + ":documents//core:size", ns)
+        if !sizes.empty?
           xml.sizes {
             sizes.each do |size|
               xml.size size.text
@@ -170,13 +174,73 @@ module CrosswalkPureToDatacite
         end
 
         # formats
-        formats = doc.xpath("//stab:documents//core:mimeType", ns)
-        if formats.count > 0
+        formats = doc.xpath("//" + pure_dataset_response_type + ":documents//core:mimeType", ns)
+        if !formats.empty?
           xml.formats {
             formats.each do |format|
               xml.format format.text
             end
           }
+        end
+
+        # licenses (current xml response only)
+        licenses = doc.xpath("//" + pure_dataset_response_type + ":documents//" + pure_dataset_response_type + ":documentLicense", ns)
+        if !licenses.empty?
+          xml.rightsList {
+            licenses.each do |license|
+              rights = license.xpath("core:term/core:localizedString", ns)
+              rightsURI = license.xpath("core:description/core:localizedString", ns)
+              xml.rights rights.text, :rightsURI => rightsURI.text
+            end
+          }
+        end
+
+        includeRelatedContent = true
+        if includeRelatedContent === true
+          # related content (current xml response only)
+          relatedPublicationUUIDs = doc.xpath("//" + pure_dataset_response_type + ":relatedPublications/core:relatedContent/@uuid", ns)
+
+          # AS AT 2016-01-14 THERE IS NO SEMANTICALLY MEANINGFUL WAY TO INCLUDE THE RELATED PROJECT(S) IN THE METADATA
+          # isDocumentedBy for a project url (stab1:projectURL) is the closest but inaccurate as it describes the project not the dataset
+          # relatedProjectUUIDs = doc.xpath("//" + pure_dataset_response_type + ":relatedProjects/core:relatedContent/@uuid", ns)
+
+          relatedContent = false
+          if !relatedPublicationUUIDs.empty?        # || !relatedProjectUUIDs.empty?
+            relatedContent = true
+          end
+
+          if relatedContent === true
+            xml.relatedIdentifiers {
+
+              # related publications
+              if !relatedPublicationUUIDs.empty?
+                relatedPublicationUUIDs.each do |relatedPublicationUUID|
+                  relatedPublicationXMLResponse = get_publication_from_uuid_pure_native(relatedPublicationUUID)
+                  if relatedPublicationXMLResponse.code === '200'
+                    relatedPublicationDoc = Nokogiri::XML(relatedPublicationXMLResponse.body)
+                    relatedPublicationNs = relatedPublicationDoc.collect_namespaces
+                    # dois
+                    relatedPublicationDois = relatedPublicationDoc.xpath("//publication-base_uk:dois/core:doi/core:doi", relatedPublicationNs)
+                    if !relatedPublicationDois.empty?
+                      doi_prefix = 'http://dx.doi.org/'
+                      relatedPublicationDois.each do |relatedPublicationDoi|
+                        # Remove unwanted start of url
+                        relatedPublicationDoiShortened = relatedPublicationDoi.text.sub(doi_prefix, '')
+                        xml.relatedIdentifier relatedPublicationDoiShortened, :relatedIdentifierType => "DOI", :relationType => "IsSupplementTo"
+                      end
+                    end
+                  end
+                end
+              end
+
+              # related projects
+              # AS AT 2016-01-14 THERE IS NO SEMANTICALLY MEANINGFUL WAY TO INCLUDE THE RELATED PROJECT(S) IN THE METADATA
+              # isDocumentedBy for a project url (stab1:projectURL) is the closest but inaccurate as it describes the project not the dataset
+              # if !relatedProjectUUIDs.empty?
+              #
+              # end
+            }
+          end
         end
       }
     end
@@ -188,9 +252,11 @@ module CrosswalkPureToDatacite
   def date_range_collected(doc)
     ns = doc.collect_namespaces
 
-    startYear = doc.xpath("//stab:temporalCoverageStartDate/core:year", ns).text
-    startMonth = doc.xpath("//stab:temporalCoverageStartDate/core:month", ns).text
-    startDay = doc.xpath("//stab:temporalCoverageStartDate/core:day", ns).text
+    pure_dataset_response_type = get_pure_dataset_response_type(doc)
+
+    startYear = doc.xpath("//" + pure_dataset_response_type + ":temporalCoverageStartDate/core:year", ns).text
+    startMonth = doc.xpath("//" + pure_dataset_response_type + ":temporalCoverageStartDate/core:month", ns).text
+    startDay = doc.xpath("//" + pure_dataset_response_type + ":temporalCoverageStartDate/core:day", ns).text
     startDate = ''
     if !startYear.empty?
       startDate << startYear
@@ -210,9 +276,9 @@ module CrosswalkPureToDatacite
       startDate << '-' + startDay
     end
 
-    endYear = doc.xpath("//stab:temporalCoverageEndDate/core:year", ns).text
-    endMonth = doc.xpath("//stab:temporalCoverageEndDate/core:month", ns).text
-    endDay = doc.xpath("//stab:temporalCoverageEndDate/core:day", ns).text
+    endYear = doc.xpath("//" + pure_dataset_response_type + ":temporalCoverageEndDate/core:year", ns).text
+    endMonth = doc.xpath("//" + pure_dataset_response_type + ":temporalCoverageEndDate/core:month", ns).text
+    endDay = doc.xpath("//" + pure_dataset_response_type + ":temporalCoverageEndDate/core:day", ns).text
     endDate = ''
     if !endYear.empty?
       endDate << endYear
@@ -238,6 +304,12 @@ module CrosswalkPureToDatacite
       return ''
     end
 
+  end
+
+  def get_pure_dataset_response_type(doc)
+    ns = doc.collect_namespaces
+    # get cur or stab before the colon
+    return doc.xpath("//core:result/core:content/@xsi:type", ns).text.split(":")[0]
   end
 
   def crosswalk_pure_local_to_datacite_dataset_metadata(doi, pure_dataset_metadata)

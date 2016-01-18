@@ -4,6 +4,7 @@ require "time"
 class DoisController < ApplicationController
   include NetHttpHelper
   include Pure
+  include PureApi
   include CrosswalkPureToDatacite
 
   def search
@@ -14,7 +15,7 @@ class DoisController < ApplicationController
     sm = DoiFindStateMachine.new
 
     # fetch pure record
-    endpoint = ENV['PURE_ENDPOINT'] + '/datasets?rendering=xml_long&pureInternalIds.id=' + params[:pure_id]
+    endpoint = ENV['PURE_ENDPOINT'] + '/datasets.current?rendering=xml_long&pureInternalIds.id=' + params[:pure_id]
     username = ENV['PURE_USERNAME']
     password = ENV['PURE_PASSWORD']
     pem = File.read(ENV['PEM'])
@@ -71,7 +72,7 @@ class DoisController < ApplicationController
     if params[:pure_id].empty?
       redirect_to :dois_search
     end
-    @display_prefixes = display_prefixes
+    #@display_prefixes = display_prefixes
   end
 
   def edit
@@ -217,7 +218,7 @@ class DoisController < ApplicationController
     doi = record.doi
 
     # PURE
-    endpoint = ENV['PURE_ENDPOINT'] + '/datasets?rendering=xml_long&pureInternalIds.id=' + pure_id.to_s
+    endpoint = ENV['PURE_ENDPOINT'] + '/datasets.current?rendering=xml_long&pureInternalIds.id=' + pure_id.to_s
     username = ENV['PURE_USERNAME']
     password = ENV['PURE_PASSWORD']
     pem = File.read(ENV['PEM'])
@@ -413,7 +414,7 @@ class DoisController < ApplicationController
 
   def create_metadata(doi)
     # PURE
-    endpoint = ENV['PURE_ENDPOINT'] + '/datasets?rendering=xml_long&pureInternalIds.id=' + params[:pure_id].to_s
+    endpoint = ENV['PURE_ENDPOINT'] + '/datasets.current?rendering=xml_long&pureInternalIds.id=' + params[:pure_id].to_s
     username = ENV['PURE_USERNAME']
     password = ENV['PURE_PASSWORD']
     pem = File.read(ENV['PEM'])
@@ -486,39 +487,39 @@ class DoisController < ApplicationController
     response
   end
 
-  def get_remote_metadata_pure(endpoint, username, password, pem)
-    return get_remote_metadata_pure_native(endpoint, username, password, pem)
-    # get_remote_metadata_pure_local(endpoint, username, password, pem)
-  end
-
-  def get_remote_metadata_pure_native(endpoint, username, password, pem)
-    uri = URI.parse(endpoint)
-    http = Net::HTTP.new(uri.host, uri.port)
-    # http.use_ssl = true
-    # http.cert = OpenSSL::X509::Certificate.new(pem)
-    # http.key = OpenSSL::PKey::RSA.new(pem)
-    # http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-    req = Net::HTTP::Get.new(uri)
-
-    auth = Base64::encode64(username+':'+"#{password}")
-    req.initialize_http_header({'Accept' => 'application/xml',
-                                'Authorization' => 'Basic ' + auth
-                               })
-
-    req.content_type = 'application/xml;charset=UTF-8'
-
-    response = http.request(req)
-    @debug = false
-    if @debug
-      @response_class = response.class
-      @headers = {}
-      @headers[:request] = headers(req)
-      @headers[:response] = headers(response)
-    end
-
-    response
-
-  end
+  # def get_remote_metadata_pure(endpoint, username, password, pem)
+  #   return get_remote_metadata_pure_native(endpoint, username, password, pem)
+  #   # get_remote_metadata_pure_local(endpoint, username, password, pem)
+  # end
+  #
+  # def get_remote_metadata_pure_native(endpoint, username, password, pem)
+  #   uri = URI.parse(endpoint)
+  #   http = Net::HTTP.new(uri.host, uri.port)
+  #   # http.use_ssl = true
+  #   # http.cert = OpenSSL::X509::Certificate.new(pem)
+  #   # http.key = OpenSSL::PKey::RSA.new(pem)
+  #   # http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+  #   req = Net::HTTP::Get.new(uri)
+  #
+  #   auth = Base64::encode64(username+':'+"#{password}")
+  #   req.initialize_http_header({'Accept' => 'application/xml',
+  #                               'Authorization' => 'Basic ' + auth
+  #                              })
+  #
+  #   req.content_type = 'application/xml;charset=UTF-8'
+  #
+  #   response = http.request(req)
+  #   @debug = false
+  #   if @debug
+  #     @response_class = response.class
+  #     @headers = {}
+  #     @headers[:request] = headers(req)
+  #     @headers[:response] = headers(response)
+  #   end
+  #
+  #   response
+  #
+  # end
 
   def get_remote_metadata_pure_local(endpoint, username, password, pem)
     uri = URI.parse(endpoint)
@@ -575,6 +576,26 @@ class DoisController < ApplicationController
     else
       return false
     end
+  end
+
+  def get_publication_from_uuid_pure_native(uuid)
+    endpoint = ENV['PURE_ENDPOINT'] + '/publication?rendering=xml_long&uuids.uuid=' + uuid
+
+    username = ENV['PURE_USERNAME']
+    password = ENV['PURE_PASSWORD']
+    pem = File.read(ENV['PEM'])
+    response = get_remote_metadata_pure(endpoint, username, password, pem)
+  end
+
+  def get_project_from_uuid_pure_native(uuid)
+    # AS AT 2016-01-14 THERE IS NO SEMANTICALLY MEANINGFUL WAY TO INCLUDE THE RELATED PROJECT(S) IN THE METADATA
+    # isDocumentedBy for a project url (stab1:projectURL) is the closest but inaccurate as it describes the project not the dataset
+    endpoint = ENV['PURE_ENDPOINT'] + '/project?rendering=xml_long&uuids.uuid=' + uuid
+
+    username = ENV['PURE_USERNAME']
+    password = ENV['PURE_PASSWORD']
+    pem = File.read(ENV['PEM'])
+    response = get_remote_metadata_pure(endpoint, username, password, pem)
   end
 
   # UTILS
