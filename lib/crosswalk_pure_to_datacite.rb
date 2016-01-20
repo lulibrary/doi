@@ -43,7 +43,7 @@ module CrosswalkPureToDatacite
         non_creator_path = "//" + pure_dataset_response_type +
             ":dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString!='Creator']"
         non_creator_contributor_types = doc.xpath(non_creator_path, ns)
-        if non_creator_contributor_types.count > 0
+        if !non_creator_contributor_types.empty?
           # Pure to DataCite types map
           contributorTypes = {
               'Owner' => 'Other',
@@ -85,7 +85,7 @@ module CrosswalkPureToDatacite
           xml.title doc.xpath("//" + pure_dataset_response_type + ":title/core:localizedString", ns).text
         }
         description_path = "//" + pure_dataset_response_type + ":descriptions//extensions-core:value/core:localizedString"
-        if doc.xpath(description_path, ns).count > 0
+        if !doc.xpath(description_path, ns).empty?
           xml.descriptions {
             xml.description doc.xpath(description_path, ns).text, :descriptionType => 'Abstract'
             # Use cdata to cope with &
@@ -101,7 +101,7 @@ module CrosswalkPureToDatacite
         xml.publicationYear t.strftime("%Y")
 
         keyword_group_path = "//core:content/core:keywordGroups/core:keywordGroup/core:keyword/core:userDefinedKeyword/core:freeKeyword"
-        if doc.xpath(keyword_group_path, ns).count > 0
+        if !doc.xpath(keyword_group_path, ns).empty?
           xml.subjects {
             doc.xpath(keyword_group_path, ns).each do |keyword_group|
               words = keyword_group.text.split(',')
@@ -219,14 +219,17 @@ module CrosswalkPureToDatacite
                   if relatedPublicationXMLResponse.code === '200'
                     relatedPublicationDoc = Nokogiri::XML(relatedPublicationXMLResponse.body)
                     relatedPublicationNs = relatedPublicationDoc.collect_namespaces
-                    # dois
-                    relatedPublicationDois = relatedPublicationDoc.xpath("//publication-base_uk:dois/core:doi/core:doi", relatedPublicationNs)
-                    if !relatedPublicationDois.empty?
-                      doi_prefix = 'http://dx.doi.org/'
-                      relatedPublicationDois.each do |relatedPublicationDoi|
-                        # Remove unwanted start of url
-                        relatedPublicationDoiShortened = relatedPublicationDoi.text.sub(doi_prefix, '')
-                        xml.relatedIdentifier relatedPublicationDoiShortened, :relatedIdentifierType => "DOI", :relationType => "IsSupplementTo"
+                    #logger.info 'relatedPublicationNs ' + relatedPublicationNs
+                    if relatedPublicationNs['xmlns:publication-base_uk']
+                      # dois
+                      relatedPublicationDois = relatedPublicationDoc.xpath("//publication-base_uk:dois/core:doi/core:doi", relatedPublicationNs)
+                      if !relatedPublicationDois.empty?
+                        doi_prefix = 'http://dx.doi.org/'
+                        relatedPublicationDois.each do |relatedPublicationDoi|
+                          # Remove unwanted start of url
+                          relatedPublicationDoiShortened = relatedPublicationDoi.text.sub(doi_prefix, '')
+                          xml.relatedIdentifier relatedPublicationDoiShortened, :relatedIdentifierType => "DOI", :relationType => "IsSupplementTo"
+                        end
                       end
                     end
                   end

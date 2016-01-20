@@ -1,5 +1,5 @@
-require "uri"
-require "time"
+require 'uri'
+require 'time'
 
 class DoisController < ApplicationController
   include NetHttpHelper
@@ -224,6 +224,7 @@ class DoisController < ApplicationController
     pem = File.read(ENV['PEM'])
 
     response = get_remote_metadata_pure(endpoint, username, password, pem)
+
     pure_native_dataset_exists = pure_dataset_exists?(response.body)
     if response.code != '200' or !pure_native_dataset_exists
       if !batch_mode
@@ -273,7 +274,7 @@ class DoisController < ApplicationController
 
   # convenience method
   def batch
-    edit_metadata_batch
+    logger.info Benchmark.measure{edit_metadata_batch}
   end
 
   def edit_metadata_batch
@@ -579,7 +580,7 @@ class DoisController < ApplicationController
   end
 
   def get_publication_from_uuid_pure_native(uuid)
-    endpoint = ENV['PURE_ENDPOINT'] + '/publication?rendering=xml_long&uuids.uuid=' + uuid
+    endpoint = ENV['PURE_ENDPOINT'] + '/publication?rendering=xml_short&uuids.uuid=' + uuid
 
     username = ENV['PURE_USERNAME']
     password = ENV['PURE_PASSWORD']
