@@ -51,7 +51,7 @@ module PureApi
                                 'Authorization' => 'Basic ' + auth
                                })
     req.content_type = 'application/xml;charset=UTF-8'
-    Net::HTTP.start(uri.host, uri.port, :open_timeout => 10, :read_timeout => 10) do |http|
+    Net::HTTP.start(uri.host, uri.port, :open_timeout => 60, :read_timeout => 60) do |http|
       http.request(req)
     end
   end

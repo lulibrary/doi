@@ -180,28 +180,43 @@ class DoisController < ApplicationController
     clean_url_path = strip_forward_slashes(params[:url])
     url = clean_url_path
 
-    # url = params[:url]
-
-    username = ENV['DATACITE_USERNAME']
-    password = ENV['DATACITE_PASSWORD']
-    pem = File.read(ENV['PEM'])
-
-    response = create_remote_doi(endpoint, doi, url, username, password, pem)
-    if response.code != '201'
-      redirect_to :back,
-                  :flash => { :error => response.code + ' ' + response.body }
-      return
-    end
-    redirect_to :root,
-                :doi => doi,
-                :flash => { :notice => doi + ' URL updated' }
-
-    now = DateTime.now
     record = Record.find(params[:id])
-    record.url = url
-    record.url_updated_at = now
-    record.url_updated_by = get_user
-    record.save
+    doi = record.doi
+    current_url = record.url
+    url_dirty = false
+    if current_url != url
+      url_dirty = true
+    end
+
+    if url_dirty
+      # url = params[:url]
+
+      username = ENV['DATACITE_USERNAME']
+      password = ENV['DATACITE_PASSWORD']
+      pem = File.read(ENV['PEM'])
+
+      response = create_remote_doi(endpoint, doi, url, username, password, pem)
+      if response.code != '201'
+        redirect_to :back,
+                    :flash => { :error => response.code + ' ' + response.body }
+        return
+      end
+      redirect_to :root,
+                  :doi => doi,
+                  :flash => { :notice => doi + ' URL updated' }
+
+      now = DateTime.now
+      # record = Record.find(params[:id])
+      record.url = url
+      record.url_updated_at = now
+      record.url_updated_by = get_user
+      record.save
+    else
+      msg = ' URL unchanged - update skipped'
+      logger.info doi + ' ' + msg
+      redirect_to :back,
+                  :flash => { :warning => doi + msg }
+    end
   end
 
   def edit_metadata_post
@@ -237,39 +252,55 @@ class DoisController < ApplicationController
 
     datacite_metadata = crosswalk_pure_to_datacite_dataset_metadata(doi,
                                                                      metadata)
-    # DATACITE
-    endpoint = ENV['DATACITE_ENDPOINT'] + ENV['DATACITE_RESOURCE_METADATA']
-    username = ENV['DATACITE_USERNAME']
-    password = ENV['DATACITE_PASSWORD']
-    pem = File.read(ENV['PEM'])
-    response = update_remote_metadata(endpoint, datacite_metadata, username,
-                                      password, pem)
-    if response.code != '201'
+    # is metadata dirty?
+    metadata_dirty = false
+    serialised_metadata = serialise_xml_to_json(datacite_metadata)
+    if record.metadata != serialised_metadata
+      metadata_dirty = true
+    end
+
+    if metadata_dirty
+      # DATACITE
+      endpoint = ENV['DATACITE_ENDPOINT'] + ENV['DATACITE_RESOURCE_METADATA']
+      username = ENV['DATACITE_USERNAME']
+      password = ENV['DATACITE_PASSWORD']
+      pem = File.read(ENV['PEM'])
+      response = update_remote_metadata(endpoint, datacite_metadata, username,
+                                        password, pem)
+      if response.code != '201'
+        if !batch_mode
+          redirect_to :back,
+                      :flash => { :error => response.code + ' ' + response.body }
+        end
+        return success
+      end
       if !batch_mode
-        redirect_to :back,
-                    :flash => { :error => response.code + ' ' + response.body }
+        redirect_to :root,
+                    :flash => { :notice => doi + ' metadata updated' }
+      end
+      success = true
+
+      if success
+        now = DateTime.now
+        record.metadata_updated_at = now
+        if batch_mode
+          user = 'batch'
+        else
+          user = get_user
+        end
+        record.metadata_updated_by = user
+        record.metadata = serialised_metadata
+        record.save
       end
       return success
-    end
-    if !batch_mode
-      redirect_to :root,
-                  :flash => { :notice => doi + ' metadata updated' }
-    end
-    success = true
-
-    if success
-      now = DateTime.now
-      record.metadata_updated_at = now
-      if batch_mode
-        user = 'batch'
-      else
-        user = get_user
+    else
+      msg = ' Metadata unchanged - update skipped'
+      logger.info pure_id.to_s + ', ' + msg
+      if !batch_mode
+        redirect_to :back,
+                    :flash => { :warning => doi + msg }
       end
-      record.metadata_updated_by = user
-      record.save
     end
-
-    return success
   end
 
   # convenience method
@@ -458,6 +489,7 @@ class DoisController < ApplicationController
     record.doi_registration_agent_id = agent_id
     record.resource_type_id = resource_type_id
     record.pure_uuid = params[:pure_uuid]
+    record.metadata = serialise_xml_to_json(@datacite_metadata)
     record.save
 
     increment_doi_registration_agent_count(agent_id)
@@ -521,6 +553,10 @@ class DoisController < ApplicationController
   #   response
   #
   # end
+
+  def serialise_xml_to_json(xml)
+    Hash.from_xml(xml).to_json.to_s
+  end
 
   def get_remote_metadata_pure_local(endpoint, username, password, pem)
     uri = URI.parse(endpoint)
