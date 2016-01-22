@@ -4,10 +4,25 @@
     <%= link_to 'Edit', edit_doi_path(id: record.id), :class => 'pure-button' %>
   <table class="pure-table pure-table-bordered">
     <tr><td><strong>Pure ID</strong></td><td><%= record.pure_id %></td></tr>
-    <tr><td><strong>Pure UUID</strong></td><td><%= record.pure_uuid %></td></tr>
+    <!--<tr><td><strong>Pure UUID</strong></td><td><%= record.pure_uuid %></td></tr>-->
     <tr><td><strong>Title</strong></td><td><%= record.title %></td></tr>
-    <tr><td><strong>Creator</strong></td><td><%= record.creator_name %></td></tr>
+    <tr><td><strong>Creators</strong></td>
+      <td>
+        <%#= record.creator_name %>
+        <%#= record.metadata %>
+        <% creators = JSON.parse(record.metadata)['resource']['creators']['creator'] %>
+        <% case creators %>
+        <% when Hash %>
+            <%= creators['creatorName'] %>
+        <%  when Array %>
+            <% creators.length.times do |i| %>
+                <%= creators[i]['creatorName'] %>.
+            <% end %>
+        <% end %>
+      </td>
+    </tr>
     <tr><td><strong>URL</strong></td><td><%= record.url %></td></tr>
+    <!--<tr><td><strong>Metadata</strong></td><td><%= raw JSON.parse(record.metadata)['resource'].to_html %></td></tr>-->
   </table>
     <br/>
     <br/>

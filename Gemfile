@@ -57,3 +57,6 @@ gem 'state_machine'
 
 # Pagination
 gem 'will_paginate', '~> 3.0.6'
+
+# handy for debugging
+gem 'hash_to_html'

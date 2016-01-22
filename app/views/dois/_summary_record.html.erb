@@ -1,6 +1,17 @@
 <div class="summary">
-<div><h2><%= @record[:title] %></h2></div>
-<div><h3><%= @record[:creator_name] %></h3></div>
+  <div><h2><%= @metadata['titles']['title'] %></h2></div>
+<!--<div><h2><%= @record[:title] %></h2></div>-->
+<div><h3>
+    <%#= @record[:creator_name] %></h3>
+  <% case @metadata['creators']['creator'] %>
+  <% when Hash %>
+      <%= @metadata['creators']['creator']['creatorName'] %>
+  <%  when Array %>
+      <% @metadata['creators']['creator'].length.times do |i| %>
+          <%= @metadata['creators']['creator'][i]['creatorName'] %>.
+      <% end %>
+  <% end %>
+</div>
 <div><h4><%= @record[:pure_id] %></h4></div>
-<div><h4><%= @record[:pure_uuid] %></h4></div>
+<!--<div><h4><%= @record[:pure_uuid] %></h4></div>-->
 </div>

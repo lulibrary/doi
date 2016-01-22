@@ -41,6 +41,7 @@ GEM
       dotenv (= 2.0.1)
     erubis (2.7.0)
     execjs (2.5.2)
+    hash_to_html (0.1.1)
     hike (1.2.3)
     i18n (0.7.0)
     jbuilder (2.2.13)
@@ -128,6 +129,7 @@ PLATFORMS
 DEPENDENCIES
   coffee-rails (~> 4.0.0)
   dotenv-rails
+  hash_to_html
   jbuilder (~> 2.0)
   jquery-rails
   nokogiri

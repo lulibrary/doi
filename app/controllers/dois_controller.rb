@@ -1,5 +1,6 @@
 require 'uri'
 require 'time'
+require 'hash_to_html'
 
 class DoisController < ApplicationController
   include NetHttpHelper
@@ -77,11 +78,17 @@ class DoisController < ApplicationController
 
   def edit
     @record = Record.find(params[:id])
+    @metadata = get_db_metadata
     # @display_prefixes = display_prefixes
   end
 
   def show
     @record = Record.find(params[:id])
+    @metadata = get_db_metadata
+  end
+
+  def get_db_metadata
+    return JSON.parse(@record.metadata)["resource"]
   end
 
   def create
