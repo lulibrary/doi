@@ -1,0 +1,33 @@
+<% if @reservation_summaries.length > 0 %>
+
+    <% @reservation_summaries.each do |reservation| %>
+        <h2><%= reservation['doi'] %></h2>
+        <% if reservation['pure_id'] %>
+            <%= link_to 'Edit', dois_find_path(pure_id: reservation['pure_id']), :class => 'pure-button' %>
+        <% end %>
+        <table class="pure-table pure-table-bordered">
+          <% if reservation['pure_id'] %>
+              <tr><td><strong>Pure ID</strong></td><td><%= reservation['pure_id'] %></td></tr>
+          <% end %>
+          <% if reservation['title'] %>
+              <tr><td><strong>Title</strong></td><td><%= reservation['title'] %></td></tr>
+          <% end %>
+          <% if reservation['creator'] %>
+              <tr><td><strong>Creator</strong></td><td><%= reservation['creator'] %></td></tr>
+          <% end %>
+          <% if reservation['created_at'] %>
+              <tr><td><strong>DOI reserved at</strong></td><td><%= reservation['created_at'] %></td></tr>
+          <% end %>
+          <% if reservation['created_by'] %>
+              <tr><td><strong>DOI reserved by</strong></td><td><%= reservation['created_by'] %></td></tr>
+          <% end %>
+        </table>
+        <br/>
+        <br/>
+    <% end %>
+
+<% else %>
+    None
+    <br/>
+    <br/>
+<% end %>

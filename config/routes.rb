@@ -2,7 +2,11 @@ Rails.application.routes.draw do
 
     root 'dois#search'
     get 'dois/search'
+    get 'dois/reservations'
+    post 'dois/reserve'
+    post 'dois/unreserve'
     post 'dois/find'
+    get 'dois/find'
     post 'dois/:id/metadata' => 'dois#edit_metadata_post', as: :edit_metadata
     # get 'dois/batch' => 'dois#edit_metadata_batch', as: :batch_update for testing via interface
     resources 'dois'

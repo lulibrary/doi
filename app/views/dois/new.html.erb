@@ -61,6 +61,49 @@
                             :class => 'pure-input-2-3 pure-input-rounded' %>
     <%= submit_tag "Mint", :class => 'pure-button pure-button-primary' %>
 <% end %>
+
+  <% if !@reserved_doi %>
+      <br/>
+      <%= form_tag({controller: "dois", action: "reserve"}, method: "post", :class => 'pure-form') do %>
+          <%= text_field_tag :pure_id, params[:pure_id],
+                             placeholder: 123456,
+                             readonly: true,
+                             :required => true,
+                             :class => 'text-field-pure-id', :hidden => true %>
+
+          <div class="field">
+            <%= label_tag(:doi_registration_agent_id, 'DOI Registration Agent', :hidden => true) %>
+            <%= collection_select(:record,
+                                  :doi_registration_agent_id,
+                                  DoiRegistrationAgent.all,
+                                  :id, :name, {}, {:hidden => true}) %>
+          </div>
+          <div class="field">
+            <%= label_tag(:resource_type_id, 'Resource Type', :hidden => true) %>
+            <%= collection_select(:record,
+                                  :resource_type_id,
+                                  ResourceType.all,
+                                  :id, :name, {}, {:hidden => true}) %>
+          </div>
+          <%= submit_tag "Reserve", :class => 'pure-button pure-button-primary' %>
+      <% end %>
+  <% end %>
+
+  <% if @reserved_doi %>
+      <br/>
+      <%= form_tag({controller: "dois", action: "unreserve"}, method: "post", :class => 'pure-form') do %>
+          <%= text_field_tag :pure_id, params[:pure_id],
+                             placeholder: 123456,
+                             readonly: true,
+                             :required => true,
+                             :class => 'text-field-pure-id', :hidden => true %>
+
+          <%= submit_tag "Unreserve", :class => 'pure-button pure-button-primary' %>
+      <% end %>
+  <% end %>
+
+
+
 </div>
 
 <% flash.clear %>

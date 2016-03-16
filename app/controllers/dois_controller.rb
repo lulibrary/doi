@@ -8,6 +8,33 @@ class DoisController < ApplicationController
   include PureApi
   include CrosswalkPureToDatacite
 
+  def reservations
+    reservation_summaries = []
+    reservations = Reservation.all
+    reservations.each do |reservation|
+      reservation_summary = {}
+      reservation_summary['pure_id'] = reservation['pure_id']
+      reservation_summary['doi'] = reservation['doi']
+      reservation_summary['created_at'] = reservation['created_at']
+      reservation_summary['created_by'] = reservation['created_by']
+      if reservation.pure_id
+        # fetch pure record
+        endpoint = ENV['PURE_ENDPOINT'] + '/datasets.current?rendering=xml_long&pureInternalIds.id=' + reservation.pure_id.to_s
+        username = ENV['PURE_USERNAME']
+        password = ENV['PURE_PASSWORD']
+        pem = File.read(ENV['PEM'])
+        response = get_remote_metadata_pure(endpoint, username, password, pem)
+        if pure_dataset_exists?(response.body)
+          summary = pure_dataset_summary(response.body)
+          reservation_summary['title'] = summary['title']
+          reservation_summary['creator'] = summary['creator']
+        end
+      end
+      reservation_summaries << reservation_summary
+    end
+    @reservation_summaries = reservation_summaries
+  end
+
   def search
     @debug_endpoints = ENV['DEBUG_ENDPOINTS']
   end
@@ -70,10 +97,12 @@ class DoisController < ApplicationController
   end
 
   def new
-    if params[:pure_id].empty?
+    pure_id = params[:pure_id]
+    if pure_id.empty?
       redirect_to :dois_search
     end
     #@display_prefixes = display_prefixes
+    @reserved_doi = reserved_doi? pure_id
   end
 
   def edit
@@ -95,20 +124,37 @@ class DoisController < ApplicationController
     sm = DoiCreateStateMachine.new
 
     # clean_doi_path = clean_doi_path(params[:doi])
+    pure_id = params[:pure_id]
 
-    agent_id = params[:record][:doi_registration_agent_id]
-    next_id = get_doi_registration_agent_next_id(agent_id)
+    minting_from_reservation = false
+    reservation = get_reservation(pure_id)
+    doi = reservation ? reservation.doi : nil
+    if doi
+      minting_from_reservation = true
+    end
+    if !doi
+      claim_reservation(pure_id)
+      reservation = get_reservation(pure_id)
+      doi = reservation ? reservation.doi : nil
+      if doi
+        minting_from_reservation = true
+      end
+    end
+    if !doi
+      agent_id = params[:record][:doi_registration_agent_id]
+      next_id = get_doi_registration_agent_next_id(agent_id)
 
-    resource_type_id = params[:record][:resource_type_id]
-    doi_suffix = get_resource_type_doi_name(resource_type_id)
+      resource_type_id = params[:record][:resource_type_id]
+      doi_suffix = get_resource_type_doi_name(resource_type_id)
 
-    path = doi_suffix + '/' + next_id.to_s
+      path = doi_suffix + '/' + next_id.to_s
 
-    doi = build_doi(identifier: ENV['DATACITE_DOI_IDENTIFIER'],
-                    prefix: ENV['DATACITE_DOI_PREFIX'], path: path)
+      doi = build_doi(identifier: ENV['DATACITE_DOI_IDENTIFIER'],
+                      prefix: ENV['DATACITE_DOI_PREFIX'], path: path)
+    end
 
-    # url = params[:url]
-    url = ENV['DATACITE_URL_PREFIX'] + '/' + doi_suffix + '-' + next_id.to_s
+    url = build_url(params[:pure_uuid], params[:title])
+
     resource = ENV['DATACITE_ENDPOINT'] + '/doi/' + doi
     username = ENV['DATACITE_USERNAME']
     password = ENV['DATACITE_PASSWORD']
@@ -138,6 +184,14 @@ class DoisController < ApplicationController
         flash[:notice] = doi + ' minted with metadata'
       else
         flash[:error] = result
+      end
+    end
+
+    if sm.state == 'minted'
+      if minting_from_reservation
+        delete_reserved_doi pure_id
+      else
+        increment_doi_registration_agent_count(agent_id)
       end
     end
 
@@ -177,6 +231,70 @@ class DoisController < ApplicationController
 
     return 'success'
 
+  end
+
+  def claim_reservation(pure_id)
+    reservation = get_cancelled_reservation
+    if reservation
+      reservation.pure_id = pure_id
+      now = DateTime.now
+      reservation.created_at = now
+      reservation.created_by = get_user
+      reservation.save
+    end
+  end
+
+  def reserve
+    pure_id = params[:pure_id]
+
+    # is there an existing reservation?
+    if !reserved_doi?(pure_id)
+      # attempt to use a generated doi which has become available as a result
+      # of a cancelled reservation
+      claim_reservation(pure_id)
+    end
+
+    # is there an existing reservation?
+    if !reserved_doi?(pure_id)
+      # create a new doi if there are none to recycle
+      reservation = Reservation.create(pure_id: pure_id)
+      agent_id = params[:record][:doi_registration_agent_id]
+
+      next_id = get_doi_registration_agent_next_id(agent_id)
+
+      resource_type_id = params[:record][:resource_type_id]
+      doi_suffix = get_resource_type_doi_name(resource_type_id)
+
+      path = doi_suffix + '/' + next_id.to_s
+
+      doi = build_doi(identifier: ENV['DATACITE_DOI_IDENTIFIER'],
+                      prefix: ENV['DATACITE_DOI_PREFIX'], path: path)
+
+      reservation.doi = doi
+      now = DateTime.now
+      reservation.created_at = now
+      reservation.created_by = get_user
+
+      if reservation.save
+        increment_doi_registration_agent_count(agent_id)
+      end
+    end
+
+    redirect_to :root
+  end
+
+  def unreserve
+    pure_id = params[:pure_id]
+    reservation = Reservation.find_by(pure_id: pure_id)
+    if reservation
+      reservation.pure_id = nil
+      now = DateTime.now
+      reservation.created_at = now
+      reservation.created_by = get_user
+      reservation.save
+    end
+
+    redirect_to :root
   end
 
   def update
@@ -499,8 +617,6 @@ class DoisController < ApplicationController
     record.metadata = serialise_xml_to_json(@datacite_metadata)
     record.save
 
-    increment_doi_registration_agent_count(agent_id)
-
     return 'success'
   end
 
@@ -711,3 +827,34 @@ class DoisController < ApplicationController
 
 end
 
+def reserved_doi?(pure_id)
+  return Reservation.find_by(pure_id: pure_id) ? true : false
+end
+
+def delete_reserved_doi(pure_id)
+  Reservation.find_by(pure_id: pure_id).delete
+end
+
+def get_cancelled_reservation
+  return Reservation.where(pure_id: nil).first
+end
+
+def get_reservation(pure_id)
+  Reservation.find_by(pure_id: pure_id)
+end
+
+def build_url(uuid, title)
+  return ENV['DATACITE_URL_PREFIX'] + '/' + slug_from_title(title) + '(' + uuid + ')' + '.html'
+end
+
+def slug_from_title(title)
+  slug = title
+  # remove leading/trailing whitespace
+  slug = slug.strip
+  # make lowercase
+  slug = slug.downcase
+  # remove characters that are not 0-9,a-Z, or space
+  slug = slug.gsub(/[^0-9a-z ]/i, '')
+  # replace space between words with a dash
+  slug = slug.gsub(/ /, '-')
+end

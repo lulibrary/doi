@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20160120132214) do
+ActiveRecord::Schema.define(version: 20160314150228) do
 
   create_table "doi_registration_agents", force: true do |t|
     t.string  "name"
@@ -34,6 +34,13 @@ ActiveRecord::Schema.define(version: 20160120132214) do
     t.integer  "resource_type_id"
     t.string   "pure_uuid"
     t.text     "metadata"
+  end
+
+  create_table "reservations", force: true do |t|
+    t.integer  "pure_id"
+    t.string   "doi"
+    t.datetime "created_at"
+    t.string   "created_by"
   end
 
   create_table "resource_types", force: true do |t|

@@ -1,0 +1,12 @@
+<div class="wrapper">
+    <%= render 'shared/header' %>
+
+    <h1>DOI reservations</h1>
+
+    <%= render 'summary_reservation' %>
+
+    <br>
+    <%= link_to 'Search', :dois_search, :class => 'pure-button' %>
+</div>
+
+<% flash.clear %>
