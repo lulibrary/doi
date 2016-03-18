@@ -297,50 +297,78 @@ class DoisController < ApplicationController
     redirect_to :root
   end
 
+  # to reorganise
   def update
+    edit_url_post(params[:id], params[:url])
+  end
+
+  def edit_url_post(id, url)
+    edit_url(id, url)
+  end
+
+  def edit_url(id, url: '', batch_mode: false)
+
+    success = false
+
     endpoint = ENV['DATACITE_ENDPOINT'] + ENV['DATACITE_RESOURCE_DOI']
 
-    doi = params[:doi] # No cleaning, as its from Datacite
+    if !batch_mode
+      clean_url_path = strip_forward_slashes(url)
+      url = clean_url_path
+    end
 
-    clean_url_path = strip_forward_slashes(params[:url])
-    url = clean_url_path
-
-    record = Record.find(params[:id])
+    record = Record.find(id)
     doi = record.doi
     current_url = record.url
     url_dirty = false
+
+    if batch_mode
+      url = build_url(record.pure_uuid, record.title)
+    end
+
     if current_url != url
       url_dirty = true
     end
 
     if url_dirty
-      # url = params[:url]
-
       username = ENV['DATACITE_USERNAME']
       password = ENV['DATACITE_PASSWORD']
       pem = File.read(ENV['PEM'])
 
       response = create_remote_doi(endpoint, doi, url, username, password, pem)
       if response.code != '201'
-        redirect_to :back,
-                    :flash => { :error => response.code + ' ' + response.body }
-        return
+        if !batch_mode
+          redirect_to :back,
+                      :flash => { :error => response.code + ' ' + response.body }
+        end
+        return success
       end
-      redirect_to :root,
-                  :doi => doi,
-                  :flash => { :notice => doi + ' URL updated' }
-
-      now = DateTime.now
-      # record = Record.find(params[:id])
-      record.url = url
-      record.url_updated_at = now
-      record.url_updated_by = get_user
-      record.save
+      if !batch_mode
+        redirect_to :root,
+                    :doi => doi,
+                    :flash => { :notice => doi + ' URL updated' }
+      end
+      success = true
+      if success
+        now = DateTime.now
+        record.url = url
+        record.url_updated_at = now
+        if batch_mode
+          user = 'batch'
+        else
+          user = get_user
+        end
+        record.url_updated_by = user
+        record.save
+      end
+      return success
     else
       msg = ' URL unchanged - update skipped'
       logger.info doi + ' ' + msg
-      redirect_to :back,
-                  :flash => { :warning => doi + msg }
+      if !batch_mode
+        redirect_to :back,
+                    :flash => { :warning => doi + msg }
+      end
     end
   end
 
@@ -428,9 +456,22 @@ class DoisController < ApplicationController
     end
   end
 
-  # convenience method
-  def batch
-    logger.info Benchmark.measure{edit_metadata_batch}
+  def batch(batch_type, benchmark: true)
+    action = ''
+    case batch_type
+      when 'metadata'
+        action = 'edit_metadata_batch'
+      when 'url'
+        action = 'edit_url_batch'
+    end
+
+    if action
+      if benchmark
+        logger.info Benchmark.measure{self.send(action)}
+      else
+        self.send(action)
+      end
+    end
   end
 
   def edit_metadata_batch
@@ -461,6 +502,35 @@ class DoisController < ApplicationController
     @data = records; nil   # suppress output
   end
 
+
+
+  def edit_url_batch
+    logger.info ''
+    logger.info ''
+    logger.info 'URL batch update started.'
+    logger.info 'Success?, Pure ID, Title'
+    logger.info ''
+    records = []
+    successes = 0
+    failures = 0
+    Record.all.each do |record|
+      data = {}
+      data['record'] = record
+      data['updated'] = edit_url(record.id, batch_mode: true)
+      summary = data['record']['pure_id'].to_s + ', ' + data['record']['title']
+      success = data['updated'] ? '1' : '0'
+      data['updated'] ? successes+=1:failures+=1
+      msg = success + ', ' + summary
+      logger.info msg
+      records << data
+    end
+    logger.info ''
+    logger.info 'URL batch update finished.'
+    logger.info 'Successes - ' + successes.to_s
+    logger.info 'Failures  - ' + failures.to_s
+
+    @data = records; nil   # suppress output
+  end
 
   private
 

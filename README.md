@@ -11,7 +11,7 @@ metadata from Pure Web Services and performs a cross-walk to the metadata schema
 for the target DOI Registration Agent. DOIs and URLs (to which the DOIs resolve)
 are generated automatically, and together with the metadata, are used to mint a
 DOI with the target DOI Registration Agent. DOI minting transactions are stored
-in a local database.
+in a local database. DOIs can be reserved for deferred minting.
 
 Supported DOI registration agents
 -
@@ -80,7 +80,12 @@ Batch update
 Use the Rails console to update all the current metadata records. Output is
 saved to the environment log.
 ```
-load './scripts/batch.rb'
+load './scripts/batch_metadata.rb'
+```
+Use the Rails console to update all the URLS for the DOIs. Output is
+saved to the environment log.
+```
+load './scripts/batch_url.rb'
 ```
 
 Troubleshooting

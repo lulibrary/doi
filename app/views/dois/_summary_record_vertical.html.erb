@@ -21,7 +21,7 @@
         <% end %>
       </td>
     </tr>
-    <tr><td><strong>URL</strong></td><td><%= record.url %></td></tr>
+    <tr><td><strong>URL</strong></td><td><%= link_to 'URL', record.url, :target => 'blank' %></td></tr>
     <!--<tr><td><strong>Metadata</strong></td><td><%= raw JSON.parse(record.metadata)['resource'].to_html %></td></tr>-->
   </table>
     <br/>

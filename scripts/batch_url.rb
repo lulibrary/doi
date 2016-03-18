@@ -5,4 +5,4 @@ ActiveRecord::Base.logger = nil
 m = DoisController.new
 
 # do the update
-m.batch
+m.batch('url')

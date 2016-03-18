@@ -9,17 +9,19 @@
 <%#= session[:pure_dataset_summary].inspect %>
 
 <%= form_tag(:doi, method: :put, :class => 'pure-form') do %>
-    <%= text_field_tag :pure_id, @record.pure_id, placeholder: 123456,  readonly: false, :required => true, :class => 'text-field-pure-id', hidden: true %>
-    <!--DOI:--> <%= text_field_tag :doi, @record.doi, placeholder: 'path/to/resource', readonly: true, :required => true, :class => 'text-field-doi', hidden: true %>
+    <%#= text_field_tag :pure_id, @record.pure_id, placeholder: 123456,  readonly: false, :required => true, :class => 'text-field-pure-id', hidden: true %>
+    <!--DOI:-->
+      <%#= text_field_tag :doi, @record.doi, placeholder: 'path/to/resource', readonly: true, :required => true, :class => 'text-field-doi', hidden: true %>
     URL: <%= text_field_tag :url, @record.url, placeholder: 'http://lancaster.ac.uk/path/to/resource', :required => true, :class => 'pure-input-2-3 pure-input-rounded' %>
-    <%= submit_tag "Update", :class => 'pure-button pure-button-primary' %>
+    <%= submit_tag "Update URL", :class => 'pure-button pure-button-primary' %>
 <% end %>
 
   <br/>
   <br/>
+
   <div class="metadata-update-atomic">
    <%= form_tag(edit_metadata_path(@record.id)) do %>
-      <%= submit_tag "Update Metadata", :class => 'pure-button button-secondary' %>
+      <%= submit_tag "Update metadata", :class => 'pure-button button-secondary' %>
   <% end %>
   </div>
   <br/>
