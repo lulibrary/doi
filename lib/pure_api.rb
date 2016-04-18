@@ -36,7 +36,6 @@ module PureApi
     end
 
     response
-
   end
 
   def get_request_xml(endpoint, username, password)

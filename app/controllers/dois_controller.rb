@@ -300,10 +300,11 @@ class DoisController < ApplicationController
   # to reorganise
   def update
     edit_url_post(params[:id], params[:url])
+
   end
 
   def edit_url_post(id, url)
-    edit_url(id, url)
+    edit_url(id, url: url, batch_mode: false)
   end
 
   def edit_url(id, url: '', batch_mode: false)
