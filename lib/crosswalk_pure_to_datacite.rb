@@ -21,7 +21,8 @@ module CrosswalkPureToDatacite
         xml.identifier doi, :identifierType => 'DOI'
         xml.creators {
           creator_path = pure_dataset_xpath_prefix + pure_dataset_response_type + ":persons/" + pure_dataset_response_type +
-              ":dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString='Creator']"
+              # ":dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString='Creator']"
+              ":dataSetPersonAssociation[person-template:personRole/core:uri='/dk/atira/pure/dataset/roles/dataset/creator']"
           doc.xpath(creator_path, ns).each do |creator|
             xml.creator {
               xml.creatorName creator.xpath("person-template:name/core:lastName", ns).text + ', ' + creator.xpath("person-template:name/core:firstName", ns).text
@@ -41,27 +42,45 @@ module CrosswalkPureToDatacite
 
         # contributors (non creators)
         non_creator_path =  pure_dataset_xpath_prefix + pure_dataset_response_type + ":persons/" + pure_dataset_response_type +
-            ":dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString!='Creator']"
+            # ":dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString!='Creator']"
+            ":dataSetPersonAssociation[person-template:personRole/core:uri!='/dk/atira/pure/dataset/roles/dataset/creator']"
         non_creator_contributor_types = doc.xpath(non_creator_path, ns)
         if !non_creator_contributor_types.empty?
           # Pure to DataCite types map
+          # contributorTypes = {
+          #     'Owner' => 'Other',
+          #     'Contributor' => 'Other',
+          #     'Data Collector' => 'DataCollector',
+          #     'Data Manager' => 'DataManager',
+          #     'Distributor' => 'Distributor',
+          #     'Editor' => 'Editor',
+          #     'Funder' => 'Funder',
+          #     'Producer' => 'Producer',
+          #     'Rights Holder' => 'RightsHolder',
+          #     'Sponsor' => 'Sponsor',
+          #     'Supervisor' => 'Supervisor',
+          #     'Other' => 'Other'
+          # }
+
+          # Pure 5.6.2 removed string representation of uri
           contributorTypes = {
-              'Owner' => 'Other',
-              'Contributor' => 'Other',
-              'Data Collector' => 'DataCollector',
-              'Data Manager' => 'DataManager',
-              'Distributor' => 'Distributor',
-              'Editor' => 'Editor',
-              'Funder' => 'Funder',
-              'Producer' => 'Producer',
-              'Rights Holder' => 'RightsHolder',
-              'Sponsor' => 'Sponsor',
-              'Supervisor' => 'Supervisor',
-              'Other' => 'Other'
+              '/dk/atira/pure/dataset/roles/dataset/owner' => 'Other',
+              '/dk/atira/pure/dataset/roles/dataset/contributor' => 'Other',
+              '/dk/atira/pure/dataset/roles/dataset/datacollector' => 'DataCollector',
+              '/dk/atira/pure/dataset/roles/dataset/datamanager' => 'DataManager',
+              '/dk/atira/pure/dataset/roles/dataset/distributor' => 'Distributor',
+              '/dk/atira/pure/dataset/roles/dataset/editor' => 'Editor',
+              '/dk/atira/pure/dataset/roles/dataset/funder' => 'Funder',
+              '/dk/atira/pure/dataset/roles/dataset/producer' => 'Producer',
+              '/dk/atira/pure/dataset/roles/dataset/rightsholder' => 'RightsHolder',
+              '/dk/atira/pure/dataset/roles/dataset/sponsor' => 'Sponsor',
+              '/dk/atira/pure/dataset/roles/dataset/supervisor' => 'Supervisor',
+              '/dk/atira/pure/dataset/roles/dataset/other' => 'Other'
           }
           xml.contributors {
             contributorTypes.each do |contributorTypePure, contributorTypeDataCite|
-              contributor_path = pure_dataset_xpath_prefix + pure_dataset_response_type + ":dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString='"+contributorTypePure+"']"
+              # contributor_path = pure_dataset_xpath_prefix + pure_dataset_response_type + ":dataSetPersonAssociation[person-template:personRole/core:term/core:localizedString='"+contributorTypePure+"']"
+              contributor_path = pure_dataset_xpath_prefix + pure_dataset_response_type + ":persons/" + pure_dataset_response_type + ":dataSetPersonAssociation[person-template:personRole/core:uri='"+contributorTypePure+"']"
               doc.xpath(contributor_path, ns).each do |contributor|
                 xml.contributor(:contributorType => contributorTypeDataCite) {
                   xml.contributorName contributor.xpath("person-template:name/core:lastName", ns).text + ', ' + contributor.xpath("person-template:name/core:firstName", ns).text
