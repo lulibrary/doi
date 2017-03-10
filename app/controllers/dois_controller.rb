@@ -1,12 +1,23 @@
 require 'uri'
 require 'time'
 require 'hash_to_html'
+require 'research_metadata'
+require 'puree'
 
 class DoisController < ApplicationController
   include NetHttpHelper
   include Pure
   include PureApi
-  include CrosswalkPureToDatacite
+  # include CrosswalkPureToDatacite
+  # include ResearchMetadata
+
+  def initialize
+    @pure_config = {
+      url:      ENV['PURE_URL'],
+      username: ENV['PURE_USERNAME'],
+      password: ENV['PURE_PASSWORD']
+    }
+  end
 
   def reservations
     reservation_summaries = []
@@ -19,13 +30,10 @@ class DoisController < ApplicationController
       reservation_summary['created_by'] = reservation['created_by']
       if reservation.pure_id
         # fetch pure record
-        endpoint = ENV['PURE_ENDPOINT'] + '/datasets.current?rendering=xml_long&pureInternalIds.id=' + reservation.pure_id.to_s
-        username = ENV['PURE_USERNAME']
-        password = ENV['PURE_PASSWORD']
-        pem = File.read(ENV['PEM'])
-        response = get_remote_metadata_pure(endpoint, username, password, pem)
-        if pure_dataset_exists?(response.body)
-          summary = pure_dataset_summary(response.body)
+        dataset_extractor = Puree::Extractor::Dataset.new @pure_config
+        metadata_model = dataset_extractor.find id: reservation.pure_id.to_s
+        if metadata_model
+          summary = pure_summary metadata_model
           reservation_summary['title'] = summary['title']
           reservation_summary['creator'] = summary['creator']
         end
@@ -43,14 +51,10 @@ class DoisController < ApplicationController
     sm = DoiFindStateMachine.new
 
     # fetch pure record
-    endpoint = ENV['PURE_ENDPOINT'] + '/datasets.current?rendering=xml_long&pureInternalIds.id=' + params[:pure_id]
-    username = ENV['PURE_USERNAME']
-    password = ENV['PURE_PASSWORD']
-    pem = File.read(ENV['PEM'])
-    response = get_remote_metadata_pure(endpoint, username, password, pem)
-    # logger.info endpoint + ' ' + response.body
+    dataset_extractor = Puree::Extractor::Dataset.new @pure_config
+    metadata_model = dataset_extractor.find id: params[:pure_id]
 
-    if pure_dataset_exists?(response.body)
+    if metadata_model
       sm.pure_dataset_found
       # logger.info 'Found ' + endpoint
       # logger.info params[:pure_id] +' has DOI ' + has_doi?(response.body).to_s
@@ -82,7 +86,7 @@ class DoisController < ApplicationController
     end
 
     if sm.state == 'creating_doi'
-      summary = pure_dataset_summary(response.body)
+      summary = pure_summary metadata_model
       summary['pure_id'] = params[:pure_id]
       redirect_to new_doi_path(summary)
     end
@@ -387,25 +391,18 @@ class DoisController < ApplicationController
     doi = record.doi
 
     # PURE
-    endpoint = ENV['PURE_ENDPOINT'] + '/datasets.current?rendering=xml_long&pureInternalIds.id=' + pure_id.to_s
-    username = ENV['PURE_USERNAME']
-    password = ENV['PURE_PASSWORD']
-    pem = File.read(ENV['PEM'])
-
-    response = get_remote_metadata_pure(endpoint, username, password, pem)
-
-    pure_native_dataset_exists = pure_dataset_exists?(response.body)
-    if response.code != '200' or !pure_native_dataset_exists
+    # fetch pure record
+    transformer = ResearchMetadata::Transformer::Dataset.new @pure_config
+    datacite_metadata = transformer.transform id: pure_id,
+                                              doi: doi
+    if !datacite_metadata
       if !batch_mode
         redirect_to :back,
-                    :flash => { :error => response.code + ' ' + response.body }
+                    :flash => { :error => 'Error fetching data from Pure' }
       end
       return success
     end
-    metadata = response.body
 
-    datacite_metadata = crosswalk_pure_to_datacite_dataset_metadata(doi,
-                                                                     metadata)
     # is metadata dirty?
     metadata_dirty = false
     serialised_metadata = serialise_xml_to_json(datacite_metadata)
@@ -641,27 +638,16 @@ class DoisController < ApplicationController
   # METADATA
 
   def create_metadata(doi)
-    # PURE
-    endpoint = ENV['PURE_ENDPOINT'] + '/datasets.current?rendering=xml_long&pureInternalIds.id=' + params[:pure_id].to_s
-    username = ENV['PURE_USERNAME']
-    password = ENV['PURE_PASSWORD']
-    pem = File.read(ENV['PEM'])
-    response = get_remote_metadata_pure(endpoint, username, password, pem)
-
-    if response.code != '200'
-      return 'Pure ' + response.code + ' ' + response.body
-    end
-    metadata = response.body
-
-    @datacite_metadata = crosswalk_pure_to_datacite_dataset_metadata(doi,
-                                                                     metadata)
+    transformer = ResearchMetadata::Transformer::Dataset.new @pure_config
+    datacite_metadata = transformer.transform  id: params[:pure_id].to_s,
+                                                doi: doi
 
     # DATACITE
     endpoint = ENV['DATACITE_ENDPOINT'] + ENV['DATACITE_RESOURCE_METADATA']
     username = ENV['DATACITE_USERNAME']
     password = ENV['DATACITE_PASSWORD']
     pem = File.read(ENV['PEM'])
-    response = update_remote_metadata(endpoint, @datacite_metadata, username,
+    response = update_remote_metadata(endpoint, datacite_metadata, username,
                                       password, pem)
     if response.code != '201'
       return 'Datacite ' + response.code + ' ' + response.body
@@ -685,7 +671,7 @@ class DoisController < ApplicationController
     record.doi_registration_agent_id = agent_id
     record.resource_type_id = resource_type_id
     record.pure_uuid = params[:pure_uuid]
-    record.metadata = serialise_xml_to_json(@datacite_metadata)
+    record.metadata = serialise_xml_to_json(datacite_metadata)
     record.save
 
     return 'success'
@@ -783,7 +769,7 @@ class DoisController < ApplicationController
   end
 
   def pure_native_orcid(uuid)
-    endpoint = ENV['PURE_ENDPOINT'] + '/person?rendering=long&uuids.uuid=' + uuid
+    endpoint = ENV['PURE_URL'] + '/person?rendering=long&uuids.uuid=' + uuid
 
     username = ENV['PURE_USERNAME']
     password = ENV['PURE_PASSWORD']
@@ -810,7 +796,7 @@ class DoisController < ApplicationController
   end
 
   def get_publication_from_uuid_pure_native(uuid)
-    endpoint = ENV['PURE_ENDPOINT'] + '/publication?rendering=xml_short&uuids.uuid=' + uuid
+    endpoint = ENV['PURE_URL'] + '/publication?rendering=xml_short&uuids.uuid=' + uuid
 
     username = ENV['PURE_USERNAME']
     password = ENV['PURE_PASSWORD']
@@ -821,7 +807,7 @@ class DoisController < ApplicationController
   def get_project_from_uuid_pure_native(uuid)
     # AS AT 2016-01-14 THERE IS NO SEMANTICALLY MEANINGFUL WAY TO INCLUDE THE RELATED PROJECT(S) IN THE METADATA
     # isDocumentedBy for a project url (stab1:projectURL) is the closest but inaccurate as it describes the project not the dataset
-    endpoint = ENV['PURE_ENDPOINT'] + '/project?rendering=xml_long&uuids.uuid=' + uuid
+    endpoint = ENV['PURE_URL'] + '/project?rendering=xml_long&uuids.uuid=' + uuid
 
     username = ENV['PURE_USERNAME']
     password = ENV['PURE_PASSWORD']

@@ -37,21 +37,29 @@ module Pure
     return true
   end
 
-  def pure_dataset_summary(pure_dataset_metadata)
-    return pure_native_dataset_summary(pure_dataset_metadata)
+  def pure_summary(pure_metadata)
+    return pure_native_summary(pure_metadata)
     # return pure_local_dataset_summary(pure_dataset_metadata)
   end
 
-  def pure_native_dataset_summary(pure_dataset_metadata)
-    doc = Nokogiri::XML(pure_dataset_metadata)
-    ns = doc.collect_namespaces
-    pure_dataset_response_type = get_pure_dataset_response_type(doc)
+  # def pure_native_dataset_summary(pure_dataset_metadata)
+  #   doc = Nokogiri::XML(pure_dataset_metadata)
+  #   ns = doc.collect_namespaces
+  #   pure_dataset_response_type = get_pure_dataset_response_type(doc)
+  #   summary = {}
+  #   summary['title'] = doc.xpath("//" + pure_dataset_response_type + ":title/core:localizedString", ns).text
+  #   creator_first_name = doc.xpath("//" + pure_dataset_response_type + ":persons/*[1]/person-template:name/core:firstName", ns).text
+  #   creator_last_name = doc.xpath("//" + pure_dataset_response_type + ":persons/*[1]/person-template:name/core:lastName", ns).text
+  #   summary['creator_name'] = creator_last_name + ', ' + creator_first_name
+  #   summary['pure_uuid'] = doc.xpath("//core:content/@uuid", ns).text
+  #   summary
+  # end
+
+  def pure_native_summary(pure_metadata)
     summary = {}
-    summary['title'] = doc.xpath("//" + pure_dataset_response_type + ":title/core:localizedString", ns).text
-    creator_first_name = doc.xpath("//" + pure_dataset_response_type + ":persons/*[1]/person-template:name/core:firstName", ns).text
-    creator_last_name = doc.xpath("//" + pure_dataset_response_type + ":persons/*[1]/person-template:name/core:lastName", ns).text
-    summary['creator_name'] = creator_last_name + ', ' + creator_first_name
-    summary['pure_uuid'] = doc.xpath("//core:content/@uuid", ns).text
+    summary['title'] = pure_metadata.title
+    summary['creator_name'] = pure_metadata.persons_internal[0].name.last_first
+    summary['pure_uuid'] = pure_metadata.uuid
     summary
   end
 

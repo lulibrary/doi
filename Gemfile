@@ -1,8 +1,7 @@
 source 'https://rubygems.org'
 
-
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
-gem 'rails', '4.1.0'
+gem 'rails', '4.2.0'
 # postgres
 gem 'pg'
 # Use sqlite3 as the database for Active Record
@@ -60,3 +59,9 @@ gem 'will_paginate', '~> 3.0.6'
 
 # handy for debugging
 gem 'hash_to_html'
+
+# pure client
+gem 'puree', path: '/home/albincla/d/puree'
+
+# pure to datacite transformer
+gem 'research_metadata', path: '/home/albincla/d/research_metadata'

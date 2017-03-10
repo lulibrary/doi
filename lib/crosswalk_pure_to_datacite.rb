@@ -7,6 +7,42 @@ module CrosswalkPureToDatacite
     # return crosswalk_pure_local_to_datacite_dataset_metadata(doi, pure_dataset_metadata)
   end
 
+  def transform_to_datacite_dataset_xml(doi, dataset)
+    builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
+      xml.resource( 'xmlns' => 'http://datacite.org/schema/kernel-4',
+                    'xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance',
+                    'xsi:schemaLocation' => 'http://datacite.org/schema/kernel-4 http://schema.datacite.org/meta/kernel-4/metadata.xsd'
+      ){
+        xml.identifier doi, :identifierType => 'DOI'
+        xml.titles {
+          xml.title dataset.title
+        }
+p
+        if !dataset.description.empty?
+          xml.descriptions {
+            xml.description dataset.description, :descriptionType => 'Abstract'
+          }
+        end
+
+        geoLocationPlace = dataset.spatial
+        # Numerical data not implemented
+        #geoLocationPoint = []
+        #geoLocationBox = []
+
+        if !geoLocationPlace.empty? # || !geoLocationPoint.empty? || !geoLocationPoint.empty?
+          xml.geoLocations {
+            geoLocationPlace.each do |i|
+              xml.geoLocation {
+                xml.geoLocationPlace i
+              }
+            end
+          }
+        end
+      }
+      end
+      builder.to_xml
+  end
+
   def crosswalk_pure_native_to_datacite_dataset_metadata(doi, pure_dataset_metadata)
     doc = Nokogiri::XML(pure_dataset_metadata)
     ns = doc.collect_namespaces
