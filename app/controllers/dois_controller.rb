@@ -11,11 +11,13 @@ class DoisController < ApplicationController
   # include CrosswalkPureToDatacite
   # include ResearchMetadata
 
-  def initialize
+  before_action :load_config
+
+  def load_config
     @pure_config = {
-      url:      ENV['PURE_URL'],
-      username: ENV['PURE_USERNAME'],
-      password: ENV['PURE_PASSWORD']
+        url:      ENV['PURE_URL'],
+        username: ENV['PURE_USERNAME'],
+        password: ENV['PURE_PASSWORD']
     }
   end
 
