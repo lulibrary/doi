@@ -47,6 +47,8 @@ class DoisController < ApplicationController
 
   def search
     @debug_endpoints = ENV['DEBUG_ENDPOINTS']
+    @pure_up = pure_up?
+    @datacite_up = datacite_up?
   end
 
   def find
@@ -534,7 +536,14 @@ class DoisController < ApplicationController
 
   private
 
+  def pure_up?
+    server = Puree::Extractor::Server.new @pure_config
+    !server.find.version.nil?
+  end
 
+  def datacite_up?
+    HTTP.head(ENV['DATACITE_ENDPOINT']).code === 200
+  end
 
   def remote_doi_minted?(resource, username, password, pem)
     uri = URI.parse(resource)
