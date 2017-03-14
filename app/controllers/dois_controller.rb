@@ -49,14 +49,22 @@ class DoisController < ApplicationController
     @debug_endpoints = ENV['DEBUG_ENDPOINTS']
     @pure_up = pure_up?
     @datacite_up = datacite_up?
+    @pure_version = pure_version
   end
 
   def find
     sm = DoiFindStateMachine.new
 
     # fetch pure record
+    # is it a dataset?
     dataset_extractor = Puree::Extractor::Dataset.new @pure_config
     metadata_model = dataset_extractor.find id: params[:pure_id]
+
+    # is it a publication of some kind?
+    if !metadata_model
+      publication_extractor = Puree::Extractor::Publication.new @pure_config
+      metadata_model = publication_extractor.find id: params[:pure_id]
+    end
 
     if metadata_model
       sm.pure_dataset_found
@@ -543,6 +551,11 @@ class DoisController < ApplicationController
 
   def datacite_up?
     HTTP.head(ENV['DATACITE_ENDPOINT']).code === 200
+  end
+
+  def pure_version
+    server = Puree::Extractor::Server.new @pure_config
+    server.find.version
   end
 
   def remote_doi_minted?(resource, username, password, pem)

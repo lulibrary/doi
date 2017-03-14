@@ -57,8 +57,25 @@ module Pure
 
   def pure_native_summary(pure_metadata)
     summary = {}
+    summary['model'] = pure_metadata.class.to_s.gsub('Puree::Model::','').downcase
+
+    output_type = nil
+    if summary['model'] === 'publication'
+      output_type = pure_metadata.type
+    end
+    if summary['model'] === 'dataset'
+      output_type = 'Dataset'
+    end
+    summary['output_type'] = output_type
+
     summary['title'] = pure_metadata.title
-    summary['creator_name'] = pure_metadata.persons_internal[0].name.last_first
+    creator_name = ''
+    if !pure_metadata.persons_internal.empty?
+      creator_name = pure_metadata.persons_internal[0].name.last_first
+    elsif !pure_metadata.persons_external.empty?
+      creator_name = pure_metadata.persons_external[0].name.last_first
+    end
+    summary['creator_name'] = creator_name
     summary['pure_uuid'] = pure_metadata.uuid
     summary
   end
