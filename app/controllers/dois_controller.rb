@@ -97,8 +97,15 @@ class DoisController < ApplicationController
 
     if sm.state == 'creating_doi'
       summary = pure_summary metadata_model
+
+      if !in_output_whitelist?(summary['output_type'])
+        flash[:error] = "It is not possible to mint a DOI for a #{summary['output_type']}"
+        redirect_to :back
+        return
+      end
+
       summary['pure_id'] = params[:pure_id]
-      redirect_to new_doi_path(summary)
+      redirect_to new_doi_path summary
     end
 
   end

@@ -2,6 +2,11 @@ module Pure
 
   private
 
+  def in_output_whitelist?(output)
+    whitelist = ['Dataset']
+    whitelist.include? output
+  end
+
   def has_doi?(xml)
     doc = Nokogiri::XML(xml)
     ns = doc.collect_namespaces

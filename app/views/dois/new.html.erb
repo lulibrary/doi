@@ -3,6 +3,7 @@
 <h1>Mint a DOI</h1>
 <%#= params.inspect %>
 <%= render 'summary'%>
+
 <%= form_tag({controller: "dois", action: "create"}, method: "post", :class => 'pure-form') do %>
       <%= text_field_tag :pure_id, params[:pure_id],
                          placeholder: 123456,
@@ -101,8 +102,6 @@
           <%= submit_tag "Unreserve", :class => 'pure-button pure-button-primary' %>
       <% end %>
   <% end %>
-
-
 
 </div>
 
