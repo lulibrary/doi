@@ -77,9 +77,7 @@ class DoisController < ApplicationController
 
     if sm.state == 'awaiting_pure_verification'
       redirect_to :back,
-                  :flash => { :error => 'Id not found for a dataset in Pure',
-                              :pure_response => response.inspect
-                  }
+                  :flash => { :error => 'Id not found in Pure' }
     end
 
     @records = Record.where("pure_id = ?", params[:pure_id])
