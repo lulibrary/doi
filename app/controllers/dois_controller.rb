@@ -99,13 +99,14 @@ class DoisController < ApplicationController
       summary = pure_summary metadata_model
 
       if !in_output_whitelist?(summary['output_type'])
-        flash[:error] = "It is not possible to mint a DOI for a #{summary['output_type']}"
+        flash[:error] = "It is not possible to mint a DOI for an output of type #{summary['output_type']}"
         redirect_to :back
         return
       end
 
       summary['pure_id'] = params[:pure_id]
       redirect_to new_doi_path summary
+
     end
 
   end
@@ -142,6 +143,9 @@ class DoisController < ApplicationController
   end
 
   def create
+    Rails.logger = Logger.new(STDOUT)
+    logger.info '++++++++++++++++++++++++++++++++++++++++++++++ in create'
+
     sm = DoiCreateStateMachine.new
 
     # clean_doi_path = clean_doi_path(params[:doi])
@@ -165,13 +169,17 @@ class DoisController < ApplicationController
       agent_id = params[:record][:doi_registration_agent_id]
       next_id = get_doi_registration_agent_next_id(agent_id)
 
-      resource_type_id = params[:record][:resource_type_id]
-      doi_suffix = get_resource_type_doi_name(resource_type_id)
+      resource_type_name = params[:output_type]
+
+      doi_suffix = get_resource_type_doi_name(resource_type_name)
 
       path = doi_suffix + '/' + next_id.to_s
 
       doi = build_doi(identifier: ENV['DATACITE_DOI_IDENTIFIER'],
                       prefix: ENV['DATACITE_DOI_PREFIX'], path: path)
+
+      logger.info doi
+
     end
 
     url = build_url(params[:pure_uuid], params[:title])
@@ -658,24 +666,38 @@ class DoisController < ApplicationController
     agent.save
   end
 
-  def get_resource_type_doi_name(resource_type_id)
-    resource_type = ResourceType.find(resource_type_id)
+  def get_resource_type_doi_name(resource_name)
+    resource_type = ResourceType.where(name: resource_name).first
     resource_type.doi_name
   end
 
 
+
   # METADATA
 
+  def create_metadata_transformer(output_type)
+    transformer = nil
+    if output_type === 'Dataset'
+      transformer = ResearchMetadata::Transformer::Dataset.new @pure_config
+    end
+    publication_whitelist = ['Doctoral Thesis', "Master's Thesis"]
+    if publication_whitelist.include? output_type
+      transformer = ResearchMetadata::Transformer::Publication.new @pure_config
+    end
+    transformer
+  end
+
   def create_metadata(doi)
-    transformer = ResearchMetadata::Transformer::Dataset.new @pure_config
-    datacite_metadata = transformer.transform  id: params[:pure_id].to_s,
-                                                doi: doi
+    transformer = create_metadata_transformer params[:output_type]
+    datacite_metadata = transformer.transform id: params[:pure_id].to_s,
+                                              doi: doi
 
     # DATACITE
     endpoint = ENV['DATACITE_ENDPOINT'] + ENV['DATACITE_RESOURCE_METADATA']
     username = ENV['DATACITE_USERNAME']
     password = ENV['DATACITE_PASSWORD']
     pem = File.read(ENV['PEM'])
+
     response = update_remote_metadata(endpoint, datacite_metadata, username,
                                       password, pem)
     if response.code != '201'

@@ -1,7 +1,7 @@
 PATH
   remote: /home/albincla/d/puree
   specs:
-    puree (1.0.0)
+    puree (1.1.0)
       http (~> 2.0)
       nokogiri (~> 1.6)
 
@@ -10,7 +10,7 @@ PATH
   specs:
     research_metadata (1.0.0)
       datacite-mapping (~> 0.2.5)
-      puree (~> 1.0.0)
+      puree (~> 1.1.0)
 
 GEM
   remote: https://rubygems.org/

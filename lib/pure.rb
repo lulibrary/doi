@@ -3,7 +3,7 @@ module Pure
   private
 
   def in_output_whitelist?(output)
-    whitelist = ['Dataset']
+    whitelist = ['Dataset', 'Doctoral Thesis', "Master's Thesis"]
     whitelist.include? output
   end
 
@@ -72,13 +72,23 @@ module Pure
       output_type = 'Dataset'
     end
     summary['output_type'] = output_type
-
+    if output_type === 'Dataset'
+      transformer = ResearchMetadata::Transformer::Dataset.new @pure_config
+    end
+    if output_type === 'Doctoral Thesis'
+      transformer = ResearchMetadata::Transformer::Publication.new @pure_config
+    end
+    if output_type === "Master's Thesis"
+      transformer = ResearchMetadata::Transformer::Publication.new @pure_config
+    end
     summary['title'] = pure_metadata.title
     creator_name = ''
     if !pure_metadata.persons_internal.empty?
       creator_name = pure_metadata.persons_internal[0].name.last_first
     elsif !pure_metadata.persons_external.empty?
       creator_name = pure_metadata.persons_external[0].name.last_first
+    elsif !pure_metadata.persons_other.empty?
+      creator_name = pure_metadata.persons_other[0].name.last_first
     end
     summary['creator_name'] = creator_name
     summary['pure_uuid'] = pure_metadata.uuid

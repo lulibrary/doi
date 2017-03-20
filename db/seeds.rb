@@ -24,3 +24,5 @@ end
 # ResourceType
 
 ResourceType.create(name: 'Dataset', doi_name: 'researchdata')
+ResourceType.create(name: 'Doctoral Thesis', doi_name: 'thesis')
+ResourceType.create(name: "Master's Thesis", doi_name: 'thesis')
