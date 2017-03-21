@@ -31,13 +31,22 @@ class DoisController < ApplicationController
       reservation_summary['created_at'] = reservation['created_at']
       reservation_summary['created_by'] = reservation['created_by']
       if reservation.pure_id
-        # fetch pure record
-        dataset_extractor = Puree::Extractor::Dataset.new @pure_config
-        metadata_model = dataset_extractor.find id: reservation.pure_id.to_s
+        # fetch pure record, using doi string component for now, to determine
+        # resource_type
+        # should really have a field in reservations table with resource_type id
+        # if dataset
+        if reservation.doi.include? '/researchdata/'
+          extractor = Puree::Extractor::Dataset.new @pure_config
+        end
+        # if thesis
+        if reservation.doi.include? '/thesis/'
+          extractor = Puree::Extractor::Publication.new @pure_config
+        end
+        metadata_model = extractor.find id: reservation.pure_id.to_s
         if metadata_model
           summary = pure_summary metadata_model
           reservation_summary['title'] = summary['title']
-          reservation_summary['creator'] = summary['creator']
+          reservation_summary['creator'] = summary['creator_name']
         end
       end
       reservation_summaries << reservation_summary
@@ -147,6 +156,7 @@ class DoisController < ApplicationController
 
     # clean_doi_path = clean_doi_path(params[:doi])
     pure_id = params[:pure_id]
+    resource_type_name = params[:output_type]
 
     minting_from_reservation = false
     reservation = get_reservation(pure_id)
@@ -155,7 +165,8 @@ class DoisController < ApplicationController
       minting_from_reservation = true
     end
     if !doi
-      claim_reservation(pure_id)
+      resource_type_doi_name = get_resource_type_doi_name(resource_type_name)
+      claim_reservation(pure_id, resource_type_doi_name)
       reservation = get_reservation(pure_id)
       doi = reservation ? reservation.doi : nil
       if doi
@@ -163,8 +174,6 @@ class DoisController < ApplicationController
       end
     end
     if !doi
-      resource_type_name = params[:output_type]
-
       next_id = get_resource_type_next_id resource_type_name
 
       doi_suffix = get_resource_type_doi_name(resource_type_name)
