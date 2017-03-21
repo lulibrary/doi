@@ -5,17 +5,6 @@
 <%#= params.inspect %>
 <%= render 'summary'%>
 
-  <%= form_tag({controller: "dois", action: "create"}, method: "post", :class => 'pure-form') do %>
-      <%= text_field_tag :pure_id,
-                         params[:pure_id],
-                         placeholder: 123456,
-                         readonly: true,
-                         required: true,
-                         class: 'text-field-pure-id',
-                         hidden: true %>
-      <%= submit_tag "Test", :class => 'pure-button' %>
-  <% end %>
-
 <%= form_tag({controller: "dois", action: "create"}, method: "post", :class => 'pure-form') do %>
       <%= text_field_tag :pure_id,
                          params[:pure_id],
@@ -95,6 +84,13 @@
                              readonly: true,
                              :required => true,
                              :class => 'text-field-pure-id', :hidden => true %>
+          <%= text_field_tag :output_type,
+                             params[:output_type],
+                             placeholder: 'OutputTypeHere',
+                             readonly: true,
+                             required: true,
+                             class: 'text-field-creator-name',
+                             hidden: true %>
 
           <div class="field">
             <%= label_tag(:doi_registration_agent_id, 'DOI Registration Agent', :hidden => true) %>

@@ -143,9 +143,6 @@ class DoisController < ApplicationController
   end
 
   def create
-    Rails.logger = Logger.new(STDOUT)
-    logger.info '++++++++++++++++++++++++++++++++++++++++++++++ in create'
-
     sm = DoiCreateStateMachine.new
 
     # clean_doi_path = clean_doi_path(params[:doi])
@@ -176,8 +173,6 @@ class DoisController < ApplicationController
 
       doi = build_doi(identifier: ENV['DATACITE_DOI_IDENTIFIER'],
                       prefix: ENV['DATACITE_DOI_PREFIX'], path: path)
-
-      # logger.info doi
     end
 
     url = build_url(params[:pure_uuid], params[:title])
@@ -260,37 +255,42 @@ class DoisController < ApplicationController
 
   end
 
-  def claim_reservation(pure_id)
+  def claim_reservation(pure_id, resource_type_doi_name)
     reservation = get_cancelled_reservation
     if reservation
-      reservation.pure_id = pure_id
-      now = DateTime.now
-      reservation.created_at = now
-      reservation.created_by = get_user
-      reservation.save
+      # is the reservation for the same type of resource? (string-based check)
+      if reservation.doi.include? "/#{resource_type_doi_name}/"
+        reservation.pure_id = pure_id
+        now = DateTime.now
+        reservation.created_at = now
+        reservation.created_by = get_user
+        reservation.save
+      end
     end
   end
 
   def reserve
     pure_id = params[:pure_id]
+    resource_type_name = params[:output_type]
 
     # is there an existing reservation?
     if !reserved_doi?(pure_id)
       # attempt to use a generated doi which has become available as a result
       # of a cancelled reservation
-      claim_reservation(pure_id)
+      resource_type_doi_name = get_resource_type_doi_name(resource_type_name)
+      claim_reservation(pure_id, resource_type_doi_name)
     end
 
     # is there an existing reservation?
     if !reserved_doi?(pure_id)
+
+
       # create a new doi if there are none to recycle
       reservation = Reservation.create(pure_id: pure_id)
-      agent_id = params[:record][:doi_registration_agent_id]
 
-      next_id = get_doi_registration_agent_next_id(agent_id)
+      next_id = get_resource_type_next_id resource_type_name
 
-      resource_type_id = params[:record][:resource_type_id]
-      doi_suffix = get_resource_type_doi_name(resource_type_id)
+      doi_suffix = get_resource_type_doi_name(resource_type_name)
 
       path = doi_suffix + '/' + next_id.to_s
 
@@ -303,7 +303,7 @@ class DoisController < ApplicationController
       reservation.created_by = get_user
 
       if reservation.save
-        increment_doi_registration_agent_count(agent_id)
+        increment_resource_type_count resource_type_name
       end
     end
 
