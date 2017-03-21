@@ -7,6 +7,35 @@ module Pure
     whitelist.include? output
   end
 
+  def determine_pure_resource_from_id(pure_id)
+    data = {}
+
+    # is it a dataset?
+    dataset_extractor = Puree::Extractor::Dataset.new @pure_config
+    metadata_model = dataset_extractor.find id: pure_id
+    if metadata_model
+      data['model'] = metadata_model
+      data['type'] = 'Dataset'
+      return data
+    end
+
+    # is it a publication of some kind?
+    publication_extractor = Puree::Extractor::Publication.new @pure_config
+    metadata_model = publication_extractor.find id: pure_id
+    if metadata_model
+      data['model'] = metadata_model
+      data['type'] = 'Publication'
+      return data
+    end
+
+    data
+  end
+
+
+
+
+
+
   def has_doi?(xml)
     doc = Nokogiri::XML(xml)
     ns = doc.collect_namespaces

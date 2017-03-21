@@ -64,16 +64,8 @@ class DoisController < ApplicationController
   def find
     sm = DoiFindStateMachine.new
 
-    # fetch pure record
-    # is it a dataset?
-    dataset_extractor = Puree::Extractor::Dataset.new @pure_config
-    metadata_model = dataset_extractor.find id: params[:pure_id]
-
-    # is it a publication of some kind?
-    if !metadata_model
-      publication_extractor = Puree::Extractor::Publication.new @pure_config
-      metadata_model = publication_extractor.find id: params[:pure_id]
-    end
+    pure_resource = determine_pure_resource_from_id params[:pure_id]
+    metadata_model = pure_resource['model']
 
     if metadata_model
       sm.pure_dataset_found
@@ -424,9 +416,21 @@ class DoisController < ApplicationController
 
     # PURE
     # fetch pure record
-    transformer = ResearchMetadata::Transformer::Dataset.new @pure_config
-    datacite_metadata = transformer.transform id: pure_id,
-                                              doi: doi
+    pure_resource = determine_pure_resource_from_id pure_id
+    type = pure_resource['type']
+
+    if type === 'Dataset'
+      transformer = ResearchMetadata::Transformer::Dataset.new @pure_config
+    end
+    if type === 'Publication'
+      transformer = ResearchMetadata::Transformer::Publication.new @pure_config
+    end
+
+    if transformer
+      datacite_metadata = transformer.transform id: pure_id,
+                                                doi: doi
+    end
+
     if !datacite_metadata
       if !batch_mode
         redirect_to :back,
