@@ -166,10 +166,9 @@ class DoisController < ApplicationController
       end
     end
     if !doi
-      agent_id = params[:record][:doi_registration_agent_id]
-      next_id = get_doi_registration_agent_next_id(agent_id)
-
       resource_type_name = params[:output_type]
+
+      next_id = get_resource_type_next_id resource_type_name
 
       doi_suffix = get_resource_type_doi_name(resource_type_name)
 
@@ -178,8 +177,7 @@ class DoisController < ApplicationController
       doi = build_doi(identifier: ENV['DATACITE_DOI_IDENTIFIER'],
                       prefix: ENV['DATACITE_DOI_PREFIX'], path: path)
 
-      logger.info doi
-
+      # logger.info doi
     end
 
     url = build_url(params[:pure_uuid], params[:title])
@@ -220,7 +218,7 @@ class DoisController < ApplicationController
       if minting_from_reservation
         delete_reserved_doi pure_id
       else
-        increment_doi_registration_agent_count(agent_id)
+        increment_resource_type_count resource_type_name
       end
     end
 
@@ -655,18 +653,38 @@ class DoisController < ApplicationController
     end
   end
 
-  def get_doi_registration_agent_next_id(doi_registration_agent_id)
-    agent = DoiRegistrationAgent.find(doi_registration_agent_id)
-    agent.count + 1
+  def map_resource_name(resource_name)
+    thesis_types = ['Doctoral Thesis', "Master's Thesis"]
+    return 'Thesis' if thesis_types.include? resource_name
+    resource_name
   end
 
-  def increment_doi_registration_agent_count(doi_registration_agent_id)
-    agent = DoiRegistrationAgent.find(doi_registration_agent_id)
-    agent.count += 1
-    agent.save
+  def get_resource_type_next_id(resource_name)
+    resource_name = map_resource_name resource_name
+    resource_type = ResourceType.where(name: resource_name).first
+    resource_type.count + 1
   end
+
+  # def get_doi_registration_agent_next_id(doi_registration_agent_id)
+  #   agent = DoiRegistrationAgent.find(doi_registration_agent_id)
+  #   agent.count + 1
+  # end
+
+  def increment_resource_type_count(resource_name)
+    resource_name = map_resource_name resource_name
+    resource_type = ResourceType.where(name: resource_name).first
+    resource_type.count += 1
+    resource_type.save
+  end
+
+  # def increment_doi_registration_agent_count(doi_registration_agent_id)
+  #   agent = DoiRegistrationAgent.find(doi_registration_agent_id)
+  #   agent.count += 1
+  #   agent.save
+  # end
 
   def get_resource_type_doi_name(resource_name)
+    resource_name = map_resource_name resource_name
     resource_type = ResourceType.where(name: resource_name).first
     resource_type.doi_name
   end
