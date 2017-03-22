@@ -33,7 +33,7 @@ class DoisController < ApplicationController
       if reservation.pure_id
         # fetch pure record, using doi string component for now, to determine
         # resource_type
-        # should really have a field in reservations table with resource_type id
+        # add a field in reservations table with resource_type id?
         # if dataset
         if reservation.doi.include? '/researchdata/'
           extractor = Puree::Extractor::Dataset.new @pure_config
