@@ -9,25 +9,23 @@ How does it work?
 The only input required by the user is a Pure Id. Using this, Mint retrieves
 metadata from Pure Web Services and performs a cross-walk to the metadata schema
 for the target DOI Registration Agent. DOIs and URLs (to which the DOIs resolve)
-are generated automatically, and together with the metadata, are used to mint a
-DOI with the target DOI Registration Agent. DOI minting transactions are stored
-in a local database. DOIs can be reserved for deferred minting.
+are generated automatically for Pure portal and together with the metadata, are
+used to mint a DOI with the target DOI Registration Agent. DOI minting
+transactions are stored in a local database. DOIs can be reserved for deferred
+minting.
 
 Supported DOI registration agents
 -
 ![DataCite logo](/app/assets/images/datacite-logo.png)
 
 Mint currently works with DataCite which provides DOIs for dataset publications.
-DataCite's metadata schema version 3.1 is supported.
+DataCite's metadata schema version 4.0 is supported.
 
 
 Ruby version
 -
-ruby 2.1.2p95 (2014-05-08 revision 45877)
+2.1
 
-System dependencies
--
-Rails 4.1.0
 
 Database creation
 -
@@ -91,13 +89,12 @@ load './scripts/batch_url.rb'
 Troubleshooting
 -
 Mint generates DOIs with an integer as the last part which is formed by
-incrementing a counter stored in a local database for that DOI
-Registration Agent.
+incrementing a counter stored in a local database for that resource type.
 >In the unlikely event that the local database should go out of sync (e.g.
-caused by local database failure) with a DOI Registration Agent, a remote DOI
+caused by local database failure), a remote DOI
 would already exist which would prevent the new one being minted with that DOI
 string. If this is the case, the ```count``` column in the table
-```doi_registration_agent``` should be adjusted to be the actual number of
-dois minted for that agent. When a new DOI is minted it will then increment
+```resource_types``` should be adjusted to be the actual number of
+dois minted for that resource type. When a new DOI is minted it will then increment
 this number. The alternative to this would be to do a request to count the
 number of DOIs returned before minting, but this has not been implemented.
