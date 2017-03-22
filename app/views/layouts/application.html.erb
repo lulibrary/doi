@@ -4,6 +4,7 @@
   <title>Doi</title>
   <%= stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track' => true %>
   <%= javascript_include_tag 'application', 'data-turbolinks-track' => true %>
+
   <%= csrf_meta_tags %>
 
   <!-- For third-generation iPad with high-resolution Retina display: -->
@@ -26,10 +27,13 @@
   <!-- Size should be 32 x 32 pixels -->
   <%= favicon_link_tag 'favicon.ico', :rel => 'shortcut icon' %>
 
+  <link href="//netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css" rel="stylesheet">
+
 </head>
 <body>
 
 <%= yield %>
+
 
 </body>
 </html>

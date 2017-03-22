@@ -1,0 +1,22 @@
+<div class="status">
+
+  <span class="status-text">System status</span>
+  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;
+
+  <% if @pure_up %>
+      <i class="fa fa-circle status-up" aria-hidden="true"></i>
+  <% else %>
+      <i class="fa fa-circle status-down" aria-hidden="true"></i>
+  <% end %>
+  <span class="status-text">Pure</span>
+
+  &nbsp; &nbsp; &nbsp;
+
+  <% if @datacite_up %>
+      <i class="fa fa-circle status-up" aria-hidden="true"></i>
+  <% else %>
+      <i class="fa fa-circle status-down" aria-hidden="true"></i>
+  <% end %>
+  <span class="status-text">DataCite</span>
+
+</div>

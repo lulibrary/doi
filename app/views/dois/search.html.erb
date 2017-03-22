@@ -12,6 +12,8 @@
 <br/>
 <%= link_to 'DOIs', :dois, :class => 'pure-button' %> <%= link_to 'DOI reservations', :dois_reservations, :class => 'pure-button' %>
 
+  <%= render 'shared/status' %>
+
   <% if @debug_endpoints == 'true' %>
     <%= render 'shared/environment' %>
   <% end %>

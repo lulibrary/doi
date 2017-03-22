@@ -1,12 +1,25 @@
 require 'uri'
 require 'time'
 require 'hash_to_html'
+require 'research_metadata'
+require 'puree'
 
 class DoisController < ApplicationController
   include NetHttpHelper
   include Pure
   include PureApi
-  include CrosswalkPureToDatacite
+  # include CrosswalkPureToDatacite
+  # include ResearchMetadata
+
+  before_action :load_config
+
+  def load_config
+    @pure_config = {
+        url:      ENV['PURE_URL'],
+        username: ENV['PURE_USERNAME'],
+        password: ENV['PURE_PASSWORD']
+    }
+  end
 
   def reservations
     reservation_summaries = []
@@ -18,16 +31,22 @@ class DoisController < ApplicationController
       reservation_summary['created_at'] = reservation['created_at']
       reservation_summary['created_by'] = reservation['created_by']
       if reservation.pure_id
-        # fetch pure record
-        endpoint = ENV['PURE_ENDPOINT'] + '/datasets.current?rendering=xml_long&pureInternalIds.id=' + reservation.pure_id.to_s
-        username = ENV['PURE_USERNAME']
-        password = ENV['PURE_PASSWORD']
-        pem = File.read(ENV['PEM'])
-        response = get_remote_metadata_pure(endpoint, username, password, pem)
-        if pure_dataset_exists?(response.body)
-          summary = pure_dataset_summary(response.body)
+        # fetch pure record, using doi string component for now, to determine
+        # resource_type
+        # add a field in reservations table with resource_type id?
+        # if dataset
+        if reservation.doi.include? '/researchdata/'
+          extractor = Puree::Extractor::Dataset.new @pure_config
+        end
+        # if thesis
+        if reservation.doi.include? '/thesis/'
+          extractor = Puree::Extractor::Publication.new @pure_config
+        end
+        metadata_model = extractor.find id: reservation.pure_id.to_s
+        if metadata_model
+          summary = pure_summary metadata_model
           reservation_summary['title'] = summary['title']
-          reservation_summary['creator'] = summary['creator']
+          reservation_summary['creator'] = summary['creator_name']
         end
       end
       reservation_summaries << reservation_summary
@@ -37,20 +56,18 @@ class DoisController < ApplicationController
 
   def search
     @debug_endpoints = ENV['DEBUG_ENDPOINTS']
+    @pure_up = pure_up?
+    @datacite_up = datacite_up?
+    @pure_version = pure_version
   end
 
   def find
     sm = DoiFindStateMachine.new
 
-    # fetch pure record
-    endpoint = ENV['PURE_ENDPOINT'] + '/datasets.current?rendering=xml_long&pureInternalIds.id=' + params[:pure_id]
-    username = ENV['PURE_USERNAME']
-    password = ENV['PURE_PASSWORD']
-    pem = File.read(ENV['PEM'])
-    response = get_remote_metadata_pure(endpoint, username, password, pem)
-    # logger.info endpoint + ' ' + response.body
+    pure_resource = determine_pure_resource_from_id params[:pure_id]
+    metadata_model = pure_resource['model']
 
-    if pure_dataset_exists?(response.body)
+    if metadata_model
       sm.pure_dataset_found
       # logger.info 'Found ' + endpoint
       # logger.info params[:pure_id] +' has DOI ' + has_doi?(response.body).to_s
@@ -61,9 +78,7 @@ class DoisController < ApplicationController
 
     if sm.state == 'awaiting_pure_verification'
       redirect_to :back,
-                  :flash => { :error => 'Id not found for a dataset in Pure',
-                              :pure_response => response.inspect
-                  }
+                  :flash => { :error => 'Id not found in Pure' }
     end
 
     @records = Record.where("pure_id = ?", params[:pure_id])
@@ -82,9 +97,17 @@ class DoisController < ApplicationController
     end
 
     if sm.state == 'creating_doi'
-      summary = pure_dataset_summary(response.body)
+      summary = pure_summary metadata_model
+
+      if !in_output_whitelist?(summary['output_type'])
+        flash[:error] = "It is not possible to mint a DOI for an output of type #{summary['output_type']}"
+        redirect_to :back
+        return
+      end
+
       summary['pure_id'] = params[:pure_id]
-      redirect_to new_doi_path(summary)
+      redirect_to new_doi_path summary
+
     end
 
   end
@@ -125,6 +148,7 @@ class DoisController < ApplicationController
 
     # clean_doi_path = clean_doi_path(params[:doi])
     pure_id = params[:pure_id]
+    resource_type_name = params[:output_type]
 
     minting_from_reservation = false
     reservation = get_reservation(pure_id)
@@ -133,7 +157,8 @@ class DoisController < ApplicationController
       minting_from_reservation = true
     end
     if !doi
-      claim_reservation(pure_id)
+      resource_type_doi_name = get_resource_type_doi_name(resource_type_name)
+      claim_reservation(pure_id, resource_type_doi_name)
       reservation = get_reservation(pure_id)
       doi = reservation ? reservation.doi : nil
       if doi
@@ -141,11 +166,9 @@ class DoisController < ApplicationController
       end
     end
     if !doi
-      agent_id = params[:record][:doi_registration_agent_id]
-      next_id = get_doi_registration_agent_next_id(agent_id)
+      next_id = get_resource_type_next_id resource_type_name
 
-      resource_type_id = params[:record][:resource_type_id]
-      doi_suffix = get_resource_type_doi_name(resource_type_id)
+      doi_suffix = get_resource_type_doi_name(resource_type_name)
 
       path = doi_suffix + '/' + next_id.to_s
 
@@ -191,7 +214,7 @@ class DoisController < ApplicationController
       if minting_from_reservation
         delete_reserved_doi pure_id
       else
-        increment_doi_registration_agent_count(agent_id)
+        increment_resource_type_count resource_type_name
       end
     end
 
@@ -233,37 +256,42 @@ class DoisController < ApplicationController
 
   end
 
-  def claim_reservation(pure_id)
+  def claim_reservation(pure_id, resource_type_doi_name)
     reservation = get_cancelled_reservation
     if reservation
-      reservation.pure_id = pure_id
-      now = DateTime.now
-      reservation.created_at = now
-      reservation.created_by = get_user
-      reservation.save
+      # is the reservation for the same type of resource? (string-based check)
+      if reservation.doi.include? "/#{resource_type_doi_name}/"
+        reservation.pure_id = pure_id
+        now = DateTime.now
+        reservation.created_at = now
+        reservation.created_by = get_user
+        reservation.save
+      end
     end
   end
 
   def reserve
     pure_id = params[:pure_id]
+    resource_type_name = params[:output_type]
 
     # is there an existing reservation?
     if !reserved_doi?(pure_id)
       # attempt to use a generated doi which has become available as a result
       # of a cancelled reservation
-      claim_reservation(pure_id)
+      resource_type_doi_name = get_resource_type_doi_name(resource_type_name)
+      claim_reservation(pure_id, resource_type_doi_name)
     end
 
     # is there an existing reservation?
     if !reserved_doi?(pure_id)
+
+
       # create a new doi if there are none to recycle
       reservation = Reservation.create(pure_id: pure_id)
-      agent_id = params[:record][:doi_registration_agent_id]
 
-      next_id = get_doi_registration_agent_next_id(agent_id)
+      next_id = get_resource_type_next_id resource_type_name
 
-      resource_type_id = params[:record][:resource_type_id]
-      doi_suffix = get_resource_type_doi_name(resource_type_id)
+      doi_suffix = get_resource_type_doi_name(resource_type_name)
 
       path = doi_suffix + '/' + next_id.to_s
 
@@ -276,7 +304,7 @@ class DoisController < ApplicationController
       reservation.created_by = get_user
 
       if reservation.save
-        increment_doi_registration_agent_count(agent_id)
+        increment_resource_type_count resource_type_name
       end
     end
 
@@ -387,25 +415,30 @@ class DoisController < ApplicationController
     doi = record.doi
 
     # PURE
-    endpoint = ENV['PURE_ENDPOINT'] + '/datasets.current?rendering=xml_long&pureInternalIds.id=' + pure_id.to_s
-    username = ENV['PURE_USERNAME']
-    password = ENV['PURE_PASSWORD']
-    pem = File.read(ENV['PEM'])
+    # fetch pure record
+    pure_resource = determine_pure_resource_from_id pure_id
+    type = pure_resource['type']
 
-    response = get_remote_metadata_pure(endpoint, username, password, pem)
+    if type === 'Dataset'
+      transformer = ResearchMetadata::Transformer::Dataset.new @pure_config
+    end
+    if type === 'Publication'
+      transformer = ResearchMetadata::Transformer::Publication.new @pure_config
+    end
 
-    pure_native_dataset_exists = pure_dataset_exists?(response.body)
-    if response.code != '200' or !pure_native_dataset_exists
+    if transformer
+      datacite_metadata = transformer.transform id: pure_id,
+                                                doi: doi
+    end
+
+    if !datacite_metadata
       if !batch_mode
         redirect_to :back,
-                    :flash => { :error => response.code + ' ' + response.body }
+                    :flash => { :error => 'Error fetching data from Pure' }
       end
       return success
     end
-    metadata = response.body
 
-    datacite_metadata = crosswalk_pure_to_datacite_dataset_metadata(doi,
-                                                                     metadata)
     # is metadata dirty?
     metadata_dirty = false
     serialised_metadata = serialise_xml_to_json(datacite_metadata)
@@ -535,7 +568,19 @@ class DoisController < ApplicationController
 
   private
 
+  def pure_up?
+    server = Puree::Extractor::Server.new @pure_config
+    !server.find.version.nil?
+  end
 
+  def datacite_up?
+    HTTP.head(ENV['DATACITE_ENDPOINT']).code === 200
+  end
+
+  def pure_version
+    server = Puree::Extractor::Server.new @pure_config
+    server.find.version
+  end
 
   def remote_doi_minted?(resource, username, password, pem)
     uri = URI.parse(resource)
@@ -621,47 +666,70 @@ class DoisController < ApplicationController
     end
   end
 
-  def get_doi_registration_agent_next_id(doi_registration_agent_id)
-    agent = DoiRegistrationAgent.find(doi_registration_agent_id)
-    agent.count + 1
+  def map_resource_name(resource_name)
+    thesis_types = ['Doctoral Thesis', "Master's Thesis"]
+    return 'Thesis' if thesis_types.include? resource_name
+    resource_name
   end
 
-  def increment_doi_registration_agent_count(doi_registration_agent_id)
-    agent = DoiRegistrationAgent.find(doi_registration_agent_id)
-    agent.count += 1
-    agent.save
+  def get_resource_type_next_id(resource_name)
+    resource_name = map_resource_name resource_name
+    resource_type = ResourceType.where(name: resource_name).first
+    resource_type.count + 1
   end
 
-  def get_resource_type_doi_name(resource_type_id)
-    resource_type = ResourceType.find(resource_type_id)
+  # def get_doi_registration_agent_next_id(doi_registration_agent_id)
+  #   agent = DoiRegistrationAgent.find(doi_registration_agent_id)
+  #   agent.count + 1
+  # end
+
+  def increment_resource_type_count(resource_name)
+    resource_name = map_resource_name resource_name
+    resource_type = ResourceType.where(name: resource_name).first
+    resource_type.count += 1
+    resource_type.save
+  end
+
+  # def increment_doi_registration_agent_count(doi_registration_agent_id)
+  #   agent = DoiRegistrationAgent.find(doi_registration_agent_id)
+  #   agent.count += 1
+  #   agent.save
+  # end
+
+  def get_resource_type_doi_name(resource_name)
+    resource_name = map_resource_name resource_name
+    resource_type = ResourceType.where(name: resource_name).first
     resource_type.doi_name
   end
 
 
+
   # METADATA
 
-  def create_metadata(doi)
-    # PURE
-    endpoint = ENV['PURE_ENDPOINT'] + '/datasets.current?rendering=xml_long&pureInternalIds.id=' + params[:pure_id].to_s
-    username = ENV['PURE_USERNAME']
-    password = ENV['PURE_PASSWORD']
-    pem = File.read(ENV['PEM'])
-    response = get_remote_metadata_pure(endpoint, username, password, pem)
-
-    if response.code != '200'
-      return 'Pure ' + response.code + ' ' + response.body
+  def create_metadata_transformer(output_type)
+    transformer = nil
+    if output_type === 'Dataset'
+      transformer = ResearchMetadata::Transformer::Dataset.new @pure_config
     end
-    metadata = response.body
+    publication_whitelist = ['Doctoral Thesis', "Master's Thesis"]
+    if publication_whitelist.include? output_type
+      transformer = ResearchMetadata::Transformer::Publication.new @pure_config
+    end
+    transformer
+  end
 
-    @datacite_metadata = crosswalk_pure_to_datacite_dataset_metadata(doi,
-                                                                     metadata)
+  def create_metadata(doi)
+    transformer = create_metadata_transformer params[:output_type]
+    datacite_metadata = transformer.transform id: params[:pure_id].to_s,
+                                              doi: doi
 
     # DATACITE
     endpoint = ENV['DATACITE_ENDPOINT'] + ENV['DATACITE_RESOURCE_METADATA']
     username = ENV['DATACITE_USERNAME']
     password = ENV['DATACITE_PASSWORD']
     pem = File.read(ENV['PEM'])
-    response = update_remote_metadata(endpoint, @datacite_metadata, username,
+
+    response = update_remote_metadata(endpoint, datacite_metadata, username,
                                       password, pem)
     if response.code != '201'
       return 'Datacite ' + response.code + ' ' + response.body
@@ -685,7 +753,7 @@ class DoisController < ApplicationController
     record.doi_registration_agent_id = agent_id
     record.resource_type_id = resource_type_id
     record.pure_uuid = params[:pure_uuid]
-    record.metadata = serialise_xml_to_json(@datacite_metadata)
+    record.metadata = serialise_xml_to_json(datacite_metadata)
     record.save
 
     return 'success'
@@ -783,7 +851,7 @@ class DoisController < ApplicationController
   end
 
   def pure_native_orcid(uuid)
-    endpoint = ENV['PURE_ENDPOINT'] + '/person?rendering=long&uuids.uuid=' + uuid
+    endpoint = ENV['PURE_URL'] + '/person?rendering=long&uuids.uuid=' + uuid
 
     username = ENV['PURE_USERNAME']
     password = ENV['PURE_PASSWORD']
@@ -810,7 +878,7 @@ class DoisController < ApplicationController
   end
 
   def get_publication_from_uuid_pure_native(uuid)
-    endpoint = ENV['PURE_ENDPOINT'] + '/publication?rendering=xml_short&uuids.uuid=' + uuid
+    endpoint = ENV['PURE_URL'] + '/publication?rendering=xml_short&uuids.uuid=' + uuid
 
     username = ENV['PURE_USERNAME']
     password = ENV['PURE_PASSWORD']
@@ -821,7 +889,7 @@ class DoisController < ApplicationController
   def get_project_from_uuid_pure_native(uuid)
     # AS AT 2016-01-14 THERE IS NO SEMANTICALLY MEANINGFUL WAY TO INCLUDE THE RELATED PROJECT(S) IN THE METADATA
     # isDocumentedBy for a project url (stab1:projectURL) is the closest but inaccurate as it describes the project not the dataset
-    endpoint = ENV['PURE_ENDPOINT'] + '/project?rendering=xml_long&uuids.uuid=' + uuid
+    endpoint = ENV['PURE_URL'] + '/project?rendering=xml_long&uuids.uuid=' + uuid
 
     username = ENV['PURE_USERNAME']
     password = ENV['PURE_PASSWORD']

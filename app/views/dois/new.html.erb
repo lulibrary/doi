@@ -1,33 +1,46 @@
 <div class="wrapper">
+
   <%= render 'shared/header' %>
 <h1>Mint a DOI</h1>
 <%#= params.inspect %>
 <%= render 'summary'%>
+
 <%= form_tag({controller: "dois", action: "create"}, method: "post", :class => 'pure-form') do %>
-      <%= text_field_tag :pure_id, params[:pure_id],
+      <%= text_field_tag :pure_id,
+                         params[:pure_id],
                          placeholder: 123456,
                          readonly: true,
-                         :required => true,
-                         :class => 'text-field-pure-id',
-                         :hidden => true %>
-      <%= text_field_tag :pure_uuid, params[:pure_uuid],
+                         required: true,
+                         class: 'text-field-pure-id',
+                         hidden: true %>
+      <%= text_field_tag :pure_uuid,
+                         params[:pure_uuid],
                          placeholder: 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx',
                          readonly: true,
-                         :required => true,
-                         :class => 'text-field-pure-id',
-                         :hidden => true %>
-      <%= text_field_tag :title, params[:title],
+                         required: true,
+                         class: 'text-field-pure-id',
+                         hidden: true %>
+      <%= text_field_tag :title,
+                         params[:title],
                          placeholder: 'TitleHere',
                          readonly: true,
-                         :required => true,
-                         :class => 'text-field-title',
-                         :hidden => true %>
-      <%= text_field_tag :creator_name, params[:creator_name],
+                         required: true,
+                         class: 'text-field-title',
+                         hidden: true %>
+      <%= text_field_tag :creator_name,
+                         params[:creator_name],
                          placeholder: 'CreatorNameHere',
                          readonly: true,
-                         :required => true,
-                         :class => 'text-field-creator-name',
-                         :hidden => true %>
+                         required: true,
+                         class: 'text-field-creator-name',
+                         hidden: true %>
+      <%= text_field_tag :output_type,
+                         params[:output_type],
+                         placeholder: 'OutputTypeHere',
+                         readonly: true,
+                         required: true,
+                         class: 'text-field-creator-name',
+                         hidden: true %>
       <!-- Hidden but could be unhidden to select from choice of DOI Registration Agent -->
       <div class="field">
         <%= label_tag(:doi_registration_agent_id, 'DOI Registration Agent', :hidden => true) %>
@@ -38,18 +51,19 @@
       </div>
       <!-- Hidden but could be unhidden to select from choice of Resource Type -->
       <div class="field">
-        <%= label_tag(:resource_type_id, 'Resource Type', :hidden => true) %>
-        <%= collection_select(:record,
+        <%#= label_tag(:resource_type_id, 'Resource Type', :hidden => true) %>
+        <%#= collection_select(:record,
                               :resource_type_id,
                               ResourceType.all,
                               :id, :name, {}, {:hidden => true}) %>
       </div>
       <!--DOI:--> <%#= @display_prefixes[:doi] %>
-      <%= text_field_tag :doi, @doi,
+      <%#= text_field_tag :doi,
+                         @doi,
                          placeholder: 'path/to/resource',
-                         :required => false,
-                         :class => 'text-field-doi',
-                         :hidden => true
+                         required: false,
+                         class: 'text-field-doi',
+                         hidden: true
       %>
     <!-- DOI resolves to... (leave if unknown)-->
     <br/>
@@ -70,6 +84,13 @@
                              readonly: true,
                              :required => true,
                              :class => 'text-field-pure-id', :hidden => true %>
+          <%= text_field_tag :output_type,
+                             params[:output_type],
+                             placeholder: 'OutputTypeHere',
+                             readonly: true,
+                             required: true,
+                             class: 'text-field-creator-name',
+                             hidden: true %>
 
           <div class="field">
             <%= label_tag(:doi_registration_agent_id, 'DOI Registration Agent', :hidden => true) %>
@@ -101,8 +122,6 @@
           <%= submit_tag "Unreserve", :class => 'pure-button pure-button-primary' %>
       <% end %>
   <% end %>
-
-
 
 </div>
 

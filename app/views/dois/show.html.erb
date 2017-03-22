@@ -36,24 +36,38 @@
                 <% when Array %>
                     <ul>
                     <% @metadata['sizes']['size'].length.times do |i| %>
-                        <li>
-                        <%= @metadata['sizes']['size'][i] %>,
-                        <%= @metadata['formats']['format'][i] %>
-                        <% if @metadata['rightsList']['rights'][i] %>
-                            , <%= @metadata['rightsList']['rights'][i] %>
-                        <% end %>
-                        </li>
+                          <% if !@metadata['sizes']['size'][i].include? 'pages' %>
+                              <li>
+                                <%= @metadata['sizes']['size'][i] %>
+                                <% if @metadata['formats']['format'] %>
+                                    , <%= @metadata['formats']['format'] %>
+                                <% end %>
+                                <% if @metadata['rightsList']['rights'] %>
+                                    , <%= @metadata['rightsList']['rights'] %>
+                                <% end %>
+                              </li>
+                          <% end %>
                     <% end %>
                     </ul>
                 <% else %>
-                    <%= @metadata['sizes']['size'] %>,
-                    <%= @metadata['formats']['format'] %>
-                    <% if @metadata['rightsList'] %>
-                        , <%= @metadata['rightsList']['rights'] %>
+                    <% if !@metadata['sizes']['size'][i].include? 'pages' %>
+                        <%= @metadata['sizes']['size'] %>,
+                        <%= @metadata['formats']['format'] %>
+                        <% if @metadata['rightsList'] %>
+                            , <%= @metadata['rightsList']['rights'] %>
+                        <% end %>
                     <% end %>
                 <% end %>
       </td>
     </tr>
+    <% end %>
+    <% if @metadata['sizes']['size'].last.include? 'pages' %>
+        <tr>
+          <td><strong>Pages</strong></td>
+          <td>
+            <%= @metadata['sizes']['size'].last.tr('pages','')  %>
+          </td>
+        </tr>
     <% end %>
     <tr><td><strong>DOI minted at</strong></td><td><%= @record.doi_created_at %></td></tr>
     <tr><td><strong>DOI minted by</strong></td><td><%= @record.doi_created_by %></td></tr>
