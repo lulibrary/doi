@@ -21,54 +21,79 @@
         <% when Hash %>
                 <%= @metadata['creators']['creator']['creatorName'] %>
         <%  when Array %>
-            <% @metadata['creators']['creator'].length.times do |i| %>
-                <%= @metadata['creators']['creator'][i]['creatorName'] %>.
+            <ul>
+            <% @metadata['creators']['creator'].each do |i| %>
+              <li>
+                <%= i['creatorName'] %>
+              </li>
             <% end %>
+            </ul>
         <% end %>
       </td>
     </tr>
 
     <% if @metadata['sizes'] %>
-    <tr><td><strong>Files</strong></td>
-      <td>
-
-              <% case @metadata['sizes']['size'] %>
-                <% when Array %>
-                    <ul>
-                    <% @metadata['sizes']['size'].length.times do |i| %>
-                          <% if !@metadata['sizes']['size'][i].include? 'pages' %>
-                              <li>
-                                <%= @metadata['sizes']['size'][i] %>
-                                <% if @metadata['formats']['format'] %>
-                                    , <%= @metadata['formats']['format'] %>
-                                <% end %>
-                                <% if @metadata['rightsList']['rights'] %>
-                                    , <%= @metadata['rightsList']['rights'] %>
-                                <% end %>
-                              </li>
-                          <% end %>
-                    <% end %>
-                    </ul>
-                <% else %>
-                    <% if !@metadata['sizes']['size'][i].include? 'pages' %>
-                        <%= @metadata['sizes']['size'] %>,
-                        <%= @metadata['formats']['format'] %>
-                        <% if @metadata['rightsList'] %>
-                            , <%= @metadata['rightsList']['rights'] %>
-                        <% end %>
-                    <% end %>
-                <% end %>
-      </td>
-    </tr>
-    <% end %>
-    <% if @metadata['sizes']['size'].last.include? 'pages' %>
-        <tr>
-          <td><strong>Pages</strong></td>
+        <tr><td><strong>Sizes</strong></td>
           <td>
-            <%= @metadata['sizes']['size'].last.tr('pages','')  %>
+            <% case @metadata['sizes']['size'] %>
+            <% when Array %>
+                <ul>
+                  <% @metadata['sizes']['size'].each do |i| %>
+                      <li>
+                        <%= i %>
+                      </li>
+                  <% end %>
+                </ul>
+            <% else %>
+                <%= @metadata['sizes']['size'] %>
+            <% end %>
           </td>
         </tr>
     <% end %>
+
+    <% if @metadata['formats'] %>
+        <tr><td><strong>Formats</strong></td>
+          <td>
+
+            <% case @metadata['formats']['format'] %>
+            <% when Array %>
+                <ul>
+                  <% @metadata['formats']['format'].each do |i| %>
+                          <li>
+                              <%= i %>
+                          </li>
+                  <% end %>
+                </ul>
+            <% else %>
+                <%= @metadata['formats']['format'] %>
+            <% end %>
+          </td>
+        </tr>
+    <% end %>
+
+    <% if @metadata['rightsList'] %>
+        <tr><td><strong>Rights</strong></td>
+          <td>
+
+            <% case @metadata['rightsList']['rights'] %>
+            <% when Array %>
+                <ul>
+                  <% @metadata['rightsList']['rights'].each do |i| %>
+                      <li>
+                        <%= i %>
+                      </li>
+                  <% end %>
+                </ul>
+            <% else %>
+                <%= @metadata['rightsList']['rights'] %>
+            <% end %>
+          </td>
+        </tr>
+    <% end %>
+
+<%#= @metadata %>
+
+
     <tr><td><strong>DOI minted at</strong></td><td><%= @record.doi_created_at %></td></tr>
     <tr><td><strong>DOI minted by</strong></td><td><%= @record.doi_created_by %></td></tr>
     <tr><td><strong>URL</strong></td><td><%= @record.url %></td></tr>
