@@ -23,7 +23,7 @@ class DoisController < ApplicationController
 
   def reservations
     reservation_summaries = []
-    reservations = Reservation.all
+    reservations = Reservation.all.order(created_at: :desc)
     reservations.each do |reservation|
       reservation_summary = {}
       reservation_summary['pure_id'] = reservation['pure_id']
@@ -31,17 +31,18 @@ class DoisController < ApplicationController
       reservation_summary['created_at'] = reservation['created_at']
       reservation_summary['created_by'] = reservation['created_by']
       if reservation.pure_id
-        # fetch pure record, using doi string component for now, to determine
-        # resource_type
-        # add a field in reservations table with resource_type id?
+        # fetch pure record
+
         # if dataset
-        if reservation.doi.include? '/researchdata/'
+        if reservation.resource_type_id === 1
           extractor = Puree::Extractor::Dataset.new @pure_config
         end
+
         # if thesis
-        if reservation.doi.include? '/thesis/'
+        if reservation.resource_type_id === 2
           extractor = Puree::Extractor::Publication.new @pure_config
         end
+
         metadata_model = extractor.find id: reservation.pure_id.to_s
         if metadata_model
           summary = pure_summary metadata_model
@@ -148,7 +149,9 @@ class DoisController < ApplicationController
 
     # clean_doi_path = clean_doi_path(params[:doi])
     pure_id = params[:pure_id]
-    resource_type_name = params[:output_type]
+    output_type = params[:output_type]
+
+    resource_type = get_resource output_type
 
     minting_from_reservation = false
     reservation = get_reservation(pure_id)
@@ -157,8 +160,7 @@ class DoisController < ApplicationController
       minting_from_reservation = true
     end
     if !doi
-      resource_type_doi_name = get_resource_type_doi_name(resource_type_name)
-      claim_reservation(pure_id, resource_type_doi_name)
+      claim_reservation(pure_id, resource_type.id)
       reservation = get_reservation(pure_id)
       doi = reservation ? reservation.doi : nil
       if doi
@@ -166,9 +168,9 @@ class DoisController < ApplicationController
       end
     end
     if !doi
-      next_id = get_resource_type_next_id resource_type_name
+      next_id = get_resource_type_next_id output_type
 
-      doi_suffix = get_resource_type_doi_name(resource_type_name)
+      doi_suffix = get_resource_type_doi_name output_type
 
       path = doi_suffix + '/' + next_id.to_s
 
@@ -176,7 +178,7 @@ class DoisController < ApplicationController
                       prefix: ENV['DATACITE_DOI_PREFIX'], path: path)
     end
 
-    url = build_url(params[:pure_uuid], params[:title])
+    url = build_url(params[:pure_uuid], params[:title], resource_type.id)
 
     resource = ENV['DATACITE_ENDPOINT'] + '/doi/' + doi
     username = ENV['DATACITE_USERNAME']
@@ -214,7 +216,7 @@ class DoisController < ApplicationController
       if minting_from_reservation
         delete_reserved_doi pure_id
       else
-        increment_resource_type_count resource_type_name
+        increment_resource_type_count output_type
       end
     end
 
@@ -256,11 +258,11 @@ class DoisController < ApplicationController
 
   end
 
-  def claim_reservation(pure_id, resource_type_doi_name)
+  def claim_reservation(pure_id, resource_type_id)
     reservation = get_cancelled_reservation
     if reservation
-      # is the reservation for the same type of resource? (string-based check)
-      if reservation.doi.include? "/#{resource_type_doi_name}/"
+      # is the reservation for the same type of resource?
+      if reservation.resource_type_id === resource_type_id
         reservation.pure_id = pure_id
         now = DateTime.now
         reservation.created_at = now
@@ -272,14 +274,15 @@ class DoisController < ApplicationController
 
   def reserve
     pure_id = params[:pure_id]
-    resource_type_name = params[:output_type]
+    output_type = params[:output_type]
+
+    resource_type = get_resource output_type
 
     # is there an existing reservation?
     if !reserved_doi?(pure_id)
       # attempt to use a generated doi which has become available as a result
       # of a cancelled reservation
-      resource_type_doi_name = get_resource_type_doi_name(resource_type_name)
-      claim_reservation(pure_id, resource_type_doi_name)
+      claim_reservation(pure_id, resource_type.id)
     end
 
     # is there an existing reservation?
@@ -289,9 +292,9 @@ class DoisController < ApplicationController
       # create a new doi if there are none to recycle
       reservation = Reservation.create(pure_id: pure_id)
 
-      next_id = get_resource_type_next_id resource_type_name
+      next_id = get_resource_type_next_id output_type
 
-      doi_suffix = get_resource_type_doi_name(resource_type_name)
+      doi_suffix = get_resource_type_doi_name output_type
 
       path = doi_suffix + '/' + next_id.to_s
 
@@ -302,9 +305,10 @@ class DoisController < ApplicationController
       now = DateTime.now
       reservation.created_at = now
       reservation.created_by = get_user
+      reservation.resource_type_id = resource_type.id
 
       if reservation.save
-        increment_resource_type_count resource_type_name
+        increment_resource_type_count output_type
       end
     end
 
@@ -352,7 +356,8 @@ class DoisController < ApplicationController
     url_dirty = false
 
     if batch_mode
-      url = build_url(record.pure_uuid, record.title)
+      resource_type = ResourceType.where(id: record.resource_type_id).first
+      url = build_url(record.pure_uuid, record.title, resource_type.id)
     end
 
     if current_url != url
@@ -566,6 +571,11 @@ class DoisController < ApplicationController
     @data = records; nil   # suppress output
   end
 
+  def build_url(uuid, title, resource_type_id)
+    url_name = get_resource_type_url_name resource_type_id
+    return ENV['DATACITE_URL_PREFIX'] + url_name + '/' + slug_from_title(title) + '(' + uuid + ')' + '.html'
+  end
+
   private
 
   def pure_up?
@@ -666,15 +676,20 @@ class DoisController < ApplicationController
     end
   end
 
-  def map_resource_name(resource_name)
+  # TO DO
+  # Put this as lookup table in DB?
+  def normalise_resource_name(output_type)
+    return 1 if output_type === 'Dataset'
+
     thesis_types = ['Doctoral Thesis', "Master's Thesis"]
-    return 'Thesis' if thesis_types.include? resource_name
-    resource_name
+    return 2 if thesis_types.include? output_type
+
+    return nil
   end
 
-  def get_resource_type_next_id(resource_name)
-    resource_name = map_resource_name resource_name
-    resource_type = ResourceType.where(name: resource_name).first
+  def get_resource_type_next_id(output_type)
+    resource_type_id = normalise_resource_name output_type
+    resource_type = ResourceType.where(id: resource_type_id).first
     resource_type.count + 1
   end
 
@@ -683,9 +698,9 @@ class DoisController < ApplicationController
   #   agent.count + 1
   # end
 
-  def increment_resource_type_count(resource_name)
-    resource_name = map_resource_name resource_name
-    resource_type = ResourceType.where(name: resource_name).first
+  def increment_resource_type_count(output_type)
+    resource_type_id = normalise_resource_name output_type
+    resource_type = ResourceType.where(id: resource_type_id).first
     resource_type.count += 1
     resource_type.save
   end
@@ -696,10 +711,20 @@ class DoisController < ApplicationController
   #   agent.save
   # end
 
-  def get_resource_type_doi_name(resource_name)
-    resource_name = map_resource_name resource_name
-    resource_type = ResourceType.where(name: resource_name).first
+  def get_resource(output_type)
+    resource_type_id = normalise_resource_name output_type
+    ResourceType.where(id: resource_type_id).first
+  end
+
+  def get_resource_type_doi_name(output_type)
+    resource_type_id = normalise_resource_name output_type
+    resource_type = ResourceType.where(id: resource_type_id).first
     resource_type.doi_name
+  end
+
+  def get_resource_type_url_name(resource_type_id)
+    resource_type = ResourceType.where(id: resource_type_id).first
+    resource_type.url_name
   end
 
 
@@ -738,7 +763,9 @@ class DoisController < ApplicationController
                 :flash => { :notice => doi + ' metadata updated' }
 
     agent_id = params[:record][:doi_registration_agent_id]
-    resource_type_id = params[:record][:resource_type_id]
+
+    # resource_type_id = params[:record][:resource_type_id]
+    resource_type_id = normalise_resource_name params[:output_type]
 
     now = DateTime.now
     record = Record.new
@@ -980,10 +1007,6 @@ end
 
 def get_reservation(pure_id)
   Reservation.find_by(pure_id: pure_id)
-end
-
-def build_url(uuid, title)
-  return ENV['DATACITE_URL_PREFIX'] + '/' + slug_from_title(title) + '(' + uuid + ')' + '.html'
 end
 
 def slug_from_title(title)

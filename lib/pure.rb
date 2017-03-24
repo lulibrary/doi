@@ -89,6 +89,11 @@ module Pure
   #   summary
   # end
 
+  # Get a summary of a Pure record
+  #
+  # output_type is based on Pure's research output type
+  # Dataset is not considered an output type in Pure but for consistency here it is included (uppercase)
+  # Publication types are raw values from the Pure API (uppercase) via Puree e.g. 'Doctoral Thesis'
   def pure_native_summary(pure_metadata)
     summary = {}
     summary['model'] = pure_metadata.class.to_s.gsub('Puree::Model::','').downcase
@@ -101,15 +106,15 @@ module Pure
       output_type = 'Dataset'
     end
     summary['output_type'] = output_type
-    if output_type === 'Dataset'
-      transformer = ResearchMetadata::Transformer::Dataset.new @pure_config
-    end
-    if output_type === 'Doctoral Thesis'
-      transformer = ResearchMetadata::Transformer::Publication.new @pure_config
-    end
-    if output_type === "Master's Thesis"
-      transformer = ResearchMetadata::Transformer::Publication.new @pure_config
-    end
+    # if output_type === 'Dataset'
+    #   transformer = ResearchMetadata::Transformer::Dataset.new @pure_config
+    # end
+    # if output_type === 'Doctoral Thesis'
+    #   transformer = ResearchMetadata::Transformer::Publication.new @pure_config
+    # end
+    # if output_type === "Master's Thesis"
+    #   transformer = ResearchMetadata::Transformer::Publication.new @pure_config
+    # end
     summary['title'] = pure_metadata.title
     creator_name = ''
     if !pure_metadata.persons_internal.empty?
