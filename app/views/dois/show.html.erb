@@ -15,22 +15,30 @@
     <tr>
       <td><strong>Creators</strong></td>
       <td>
-        <%#= @metadata['creators']['creator'] %>
-
-        <% case @metadata['creators']['creator'] %>
+        <% creators = @metadata['creators']['creator'] %>
+        <% case creators %>
         <% when Hash %>
-                <%= @metadata['creators']['creator']['creatorName'] %>
+                <%= creators['creatorName'] %>
         <%  when Array %>
-            <ul>
-            <% @metadata['creators']['creator'].each do |i| %>
-              <li>
-                <%= i['creatorName'] %>
-              </li>
-            <% end %>
-            </ul>
+            <%= creators[0]['creatorName'] %> et al.
         <% end %>
       </td>
     </tr>
+
+    <% if @metadata['contributors'] %>
+        <tr>
+          <td><strong>Contributors</strong></td>
+          <td>
+            <% contributors = @metadata['contributors']['contributor'] %>
+            <% case contributors %>
+            <% when Hash %>
+                <%= contributors['contributorName'] %>
+            <%  when Array %>
+                <%= contributors[0]['contributorName'] %>
+            <% end %>
+          </td>
+        </tr>
+    <% end %>
 
     <% if @metadata['sizes'] %>
         <tr><td><strong>Sizes</strong></td>

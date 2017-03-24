@@ -15,9 +15,7 @@
         <% when Hash %>
             <%= creators['creatorName'] %>
         <%  when Array %>
-            <% creators.length.times do |i| %>
-                <%= creators[i]['creatorName'] %>.
-            <% end %>
+            <%= creators[0]['creatorName'] %> et al.
         <% end %>
       </td>
     </tr>

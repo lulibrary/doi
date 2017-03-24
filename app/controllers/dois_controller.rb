@@ -23,7 +23,7 @@ class DoisController < ApplicationController
 
   def reservations
     reservation_summaries = []
-    reservations = Reservation.all
+    reservations = Reservation.all.order(created_at: :desc)
     reservations.each do |reservation|
       reservation_summary = {}
       reservation_summary['pure_id'] = reservation['pure_id']

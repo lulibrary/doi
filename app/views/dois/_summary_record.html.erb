@@ -7,9 +7,11 @@
   <% when Hash %>
       <%= @metadata['creators']['creator']['creatorName'] %>
   <%  when Array %>
-      <% @metadata['creators']['creator'].length.times do |i| %>
-          <%= @metadata['creators']['creator'][i]['creatorName'] %>.
+      <ul>
+      <% @metadata['creators']['creator'].each do |i| %>
+          <li><%= i['creatorName'] %></li>
       <% end %>
+      </ul>
   <% end %>
 </div>
 <div><h4><%= @record[:pure_id] %></h4></div>
