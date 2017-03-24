@@ -18,7 +18,7 @@ Supported DOI registration agents
 -
 ![DataCite logo](/app/assets/images/datacite-logo.png)
 
-Mint currently works with DataCite which provides DOIs for dataset publications.
+Mint currently works with DataCite which provides DOIs for datasets and theses (doctoral and master's).
 DataCite's metadata schema version 4.0 is supported.
 
 
