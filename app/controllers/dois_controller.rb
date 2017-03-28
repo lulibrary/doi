@@ -13,14 +13,6 @@ class DoisController < ApplicationController
 
   before_action :load_config
 
-  def load_config
-    @pure_config = {
-        url:      ENV['PURE_URL'],
-        username: ENV['PURE_USERNAME'],
-        password: ENV['PURE_PASSWORD']
-    }
-  end
-
   def reservations
     reservation_summaries = []
     reservations = Reservation.all.order(created_at: :desc)
@@ -416,18 +408,17 @@ class DoisController < ApplicationController
 
     # LOCAL DB
     record = Record.find(id)
+
     pure_id = record.pure_id
     doi = record.doi
 
     # PURE
-    # fetch pure record
-    pure_resource = determine_pure_resource_from_id pure_id
-    type = pure_resource['type']
+    resource_type = resource_type_from_resource_type_id record.resource_type_id
 
-    if type === 'Dataset'
+    transformer = nil
+    if resource_type === 'Dataset'
       transformer = ResearchMetadata::Transformer::Dataset.new @pure_config
-    end
-    if type === 'Publication'
+    elsif resource_type === 'Publication'
       transformer = ResearchMetadata::Transformer::Publication.new @pure_config
     end
 
@@ -496,6 +487,7 @@ class DoisController < ApplicationController
   end
 
   def batch(batch_type, benchmark: true)
+    load_config
     action = ''
     case batch_type
       when 'metadata'
@@ -1019,4 +1011,12 @@ def slug_from_title(title)
   slug = slug.gsub(/[^0-9a-z ]/i, '')
   # replace space between words with a dash
   slug = slug.gsub(/ /, '-')
+end
+
+def load_config
+  @pure_config = {
+      url:      ENV['PURE_URL'],
+      username: ENV['PURE_USERNAME'],
+      password: ENV['PURE_PASSWORD']
+  }
 end

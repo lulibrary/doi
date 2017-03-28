@@ -9,7 +9,6 @@ module Pure
 
   def determine_pure_resource_from_id(pure_id)
     data = {}
-
     # is it a dataset?
     dataset_extractor = Puree::Extractor::Dataset.new @pure_config
     metadata_model = dataset_extractor.find id: pure_id
@@ -29,6 +28,14 @@ module Pure
     end
 
     data
+  end
+
+  def resource_type_from_resource_type_id(resource_type_id)
+    # 1 Dataset
+    # 2 Thesis
+    return 'Dataset' if resource_type_id === 1
+    return 'Publication' if resource_type_id === 2
+    return nil
   end
 
 
