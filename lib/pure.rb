@@ -34,7 +34,7 @@ module Pure
     # 1 Dataset
     # 2 Thesis
     return 'Dataset' if resource_type_id === 1
-    return 'Publication' if resource_type_id === 2
+    return 'Thesis' if resource_type_id === 2
     return nil
   end
 
