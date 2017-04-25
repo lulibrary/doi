@@ -3,17 +3,24 @@
   <h1><%= @record.doi %></h1>
   <%= link_to 'Edit', edit_doi_path(id: @record.id), :class => 'pure-button' %>
   <table class="pure-table pure-table-bordered">
+    <%# label_class = 'z-depth-5 light-green lighten-3' %>
+    <% label_class = '' %>
     <%#= @metadata %>
-    <tr><td><strong>Pure ID</strong></td><td><%= @record.pure_id %></td></tr>
-    <tr><td><strong>Pure UUID</strong></td><td><%= @record.pure_uuid %></td></tr>
+    <tr><td class="<%=label_class%>"><strong>Pure ID</strong></td><td><%= @record.pure_id %></td></tr>
+    <tr><td class="<%=label_class%>"><strong>Pure UUID</strong></td><td><%= @record.pure_uuid %></td></tr>
 
     <!--<tr><td><strong>Title</strong></td><td><%= @record.title %></td></tr>-->
-    <tr><td><strong>Title</strong></td><td><%= @metadata["titles"]["title"] %></td></tr>
+    <tr>
+      <td class="<%=label_class%>"><strong>Title</strong></td>
+      <td>
+        <%= @metadata["titles"]["title"][0] %><% if @metadata["titles"]["title"].size === 2 %>: <%= @metadata["titles"]["title"][1] %><% end %>
+      </td>
+    </tr>
 
-    <tr><td><strong>Description</strong></td><td><%= @metadata["descriptions"]["description"] %></td></tr>
+    <tr><td class="<%=label_class%>"><strong>Description</strong></td><td><%= @metadata["descriptions"]["description"] %></td></tr>
 
     <tr>
-      <td><strong>Creators</strong></td>
+      <td class="<%=label_class%>"><strong>Creators</strong></td>
       <td>
         <% creators = @metadata['creators']['creator'] %>
         <% case creators %>
@@ -27,7 +34,7 @@
 
     <% if @metadata['contributors'] %>
         <tr>
-          <td><strong>Contributors</strong></td>
+          <td class="<%=label_class%>"><strong>Contributors</strong></td>
           <td>
             <% contributors = @metadata['contributors']['contributor'] %>
             <% case contributors %>
@@ -41,7 +48,7 @@
     <% end %>
 
     <% if @metadata['sizes'] %>
-        <tr><td><strong>Sizes</strong></td>
+        <tr><td class="<%=label_class%>"><strong>Sizes</strong></td>
           <td>
             <% case @metadata['sizes']['size'] %>
             <% when Array %>
@@ -60,7 +67,7 @@
     <% end %>
 
     <% if @metadata['formats'] %>
-        <tr><td><strong>Formats</strong></td>
+        <tr><td class="<%=label_class%>"><strong>Formats</strong></td>
           <td>
 
             <% case @metadata['formats']['format'] %>
@@ -80,7 +87,7 @@
     <% end %>
 
     <% if @metadata['rightsList'] %>
-        <tr><td><strong>Rights</strong></td>
+        <tr><td class="<%=label_class%>"><strong>Rights</strong></td>
           <td>
 
             <% case @metadata['rightsList']['rights'] %>
@@ -102,13 +109,13 @@
 <%#= @metadata %>
 
 
-    <tr><td><strong>DOI minted at</strong></td><td><%= @record.doi_created_at %></td></tr>
-    <tr><td><strong>DOI minted by</strong></td><td><%= @record.doi_created_by %></td></tr>
-    <tr><td><strong>URL</strong></td><td><%= @record.url %></td></tr>
-    <tr><td><strong>URL updated at</strong></td><td><%= @record.url_updated_at %></td></tr>
-    <tr><td><strong>URL updated by</strong></td><td><%= @record.url_updated_by %></td></tr>
-    <tr><td><strong>Metadata updated at</strong></td><td><%= @record.metadata_updated_at %></td></tr>
-    <tr><td><strong>Metadata updated by</strong></td><td><%= @record.metadata_updated_by %></td></tr>
+    <tr><td class="<%=label_class%>"><strong>DOI minted at</strong></td><td><%= @record.doi_created_at %></td></tr>
+    <tr><td class="<%=label_class%>"><strong>DOI minted by</strong></td><td><%= @record.doi_created_by %></td></tr>
+    <tr><td class="<%=label_class%>"><strong>URL</strong></td><td><%= @record.url %></td></tr>
+    <tr><td class="<%=label_class%>"><strong>URL updated at</strong></td><td><%= @record.url_updated_at %></td></tr>
+    <tr><td class="<%=label_class%>"><strong>URL updated by</strong></td><td><%= @record.url_updated_by %></td></tr>
+    <tr><td class="<%=label_class%>"><strong>Metadata updated at</strong></td><td><%= @record.metadata_updated_at %></td></tr>
+    <tr><td class="<%=label_class%>"><strong>Metadata updated by</strong></td><td><%= @record.metadata_updated_by %></td></tr>
   </table>
 
   <br/>

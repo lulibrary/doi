@@ -5,12 +5,13 @@
 <%= form_tag({controller: "dois", action: "find"}, method: "post", :class => 'pure-form') do %>
     Pure ID: <%= text_field_tag :pure_id, "", placeholder: 123456, :required => true,
                                 :class => 'pure-input-1-4 pure-input-rounded', type: :number %>
-    <%= submit_tag "Search", :class => 'pure-button pure-button-primary' %>
+    <%= submit_tag "Search", :class => 'pure-button pure-button-primary', :id => 'search-btn' %>
 <% end %>
 
 <br/>
 <br/>
-<%= link_to 'DOIs', :dois, :class => 'pure-button' %> <%= link_to 'DOI reservations', :dois_reservations, :class => 'pure-button' %>
+<%= link_to 'DOIs', :dois, :class => 'pure-button' %>
+<%= link_to 'DOI reservations', :dois_reservations, :class => 'pure-button', :id => 'reservations_btn' %>
 
   <%= render 'shared/status' %>
 
@@ -20,3 +21,6 @@
 </div>
 
 <% flash.clear %>
+
+
+

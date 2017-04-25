@@ -169,7 +169,6 @@ class DoisController < ApplicationController
       doi = build_doi(identifier: ENV['DATACITE_DOI_IDENTIFIER'],
                       prefix: ENV['DATACITE_DOI_PREFIX'], path: path)
     end
-
     url = build_url(params[:pure_uuid], params[:title], resource_type.id)
 
     resource = ENV['DATACITE_ENDPOINT'] + '/doi/' + doi
@@ -196,6 +195,7 @@ class DoisController < ApplicationController
 
     if sm.state == 'creating_doi'
       result = create_doi(doi, url)
+
       if result == 'success'
         sm.doi_created
         flash[:notice] = doi + ' minted with metadata'
@@ -628,6 +628,7 @@ class DoisController < ApplicationController
   end
 
   def create_remote_doi(endpoint, doi, url, username, password, pem)
+
     uri = URI.parse(endpoint)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
@@ -641,6 +642,7 @@ class DoisController < ApplicationController
 
     @headers = {}
     @headers[:request] = headers(req)
+
     response = http.request(req)
     @headers[:response] = headers(response)
     response
@@ -730,7 +732,7 @@ class DoisController < ApplicationController
     end
     publication_whitelist = ['Doctoral Thesis', "Master's Thesis"]
     if publication_whitelist.include? output_type
-      transformer = ResearchMetadata::Transformer::Publication.new @pure_config
+      transformer = ResearchMetadata::Transformer::Thesis.new @pure_config
     end
     transformer
   end
@@ -739,13 +741,11 @@ class DoisController < ApplicationController
     transformer = create_metadata_transformer params[:output_type]
     datacite_metadata = transformer.transform id: params[:pure_id].to_s,
                                               doi: doi
-
     # DATACITE
     endpoint = ENV['DATACITE_ENDPOINT'] + ENV['DATACITE_RESOURCE_METADATA']
     username = ENV['DATACITE_USERNAME']
     password = ENV['DATACITE_PASSWORD']
     pem = File.read(ENV['PEM'])
-
     response = update_remote_metadata(endpoint, datacite_metadata, username,
                                       password, pem)
     if response.code != '201'
