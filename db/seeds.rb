@@ -24,4 +24,4 @@ end
 # ResourceType
 
 ResourceType.create(name: 'dataset', doi_name: 'researchdata', url_name: 'datasets', count: 0)
-ResourceType.create(name: 'thesis', doi_name: 'thesis', url_name: 'theses', count: 0)
+ResourceType.create(name: 'thesis', doi_name: 'thesis', url_name: 'publications', count: 0)
