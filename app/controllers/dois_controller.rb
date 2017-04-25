@@ -32,7 +32,7 @@ class DoisController < ApplicationController
 
         # if thesis
         if reservation.resource_type_id === 2
-          extractor = Puree::Extractor::Publication.new @pure_config
+          extractor = Puree::Extractor::Thesis.new @pure_config
         end
 
         metadata_model = extractor.find id: reservation.pure_id.to_s
@@ -418,8 +418,8 @@ class DoisController < ApplicationController
     transformer = nil
     if resource_type === 'Dataset'
       transformer = ResearchMetadata::Transformer::Dataset.new @pure_config
-    elsif resource_type === 'Publication'
-      transformer = ResearchMetadata::Transformer::Publication.new @pure_config
+    elsif resource_type === 'Thesis'
+      transformer = ResearchMetadata::Transformer::Thesis.new @pure_config
     end
 
     if transformer
