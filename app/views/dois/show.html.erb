@@ -1,11 +1,14 @@
 <div class="wrapper">
   <%= render 'shared/header' %>
+
+  <%#= @record.inspect %>
+  <%#= @metadata.inspect %>
+
   <h1><%= @record.doi %></h1>
   <%= link_to 'Edit', edit_doi_path(id: @record.id), :class => 'pure-button' %>
   <table class="pure-table pure-table-bordered">
     <%# label_class = 'z-depth-5 light-green lighten-3' %>
     <% label_class = '' %>
-    <%#= @metadata %>
     <tr><td class="<%=label_class%>"><strong>Pure ID</strong></td><td><%= @record.pure_id %></td></tr>
     <tr><td class="<%=label_class%>"><strong>Pure UUID</strong></td><td><%= @record.pure_uuid %></td></tr>
 
@@ -13,7 +16,13 @@
     <tr>
       <td class="<%=label_class%>"><strong>Title</strong></td>
       <td>
-        <%= @metadata["titles"]["title"][0] %><% if @metadata["titles"]["title"].size === 2 %>: <%= @metadata["titles"]["title"][1] %><% end %>
+        <% if @metadata["titles"]["title"].class == String %>
+            <%= @metadata["titles"]["title"] %>
+        <% end %>
+        <% if @metadata["titles"]["title"].class == Array %>
+            <% if @metadata["titles"]["title"].size === 1 %><%= @metadata["titles"]["title"][0]%><% end %>
+            <% if @metadata["titles"]["title"].size === 2 %><%= @metadata["titles"]["title"][0]%><% end %><% if @metadata["titles"]["title"].size === 2 %>: <%= @metadata["titles"]["title"][1] %><% end %>
+        <% end %>
       </td>
     </tr>
 

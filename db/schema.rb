@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170323160915) do
+ActiveRecord::Schema.define(version: 20170426092212) do
 
   create_table "doi_registration_agents", force: :cascade do |t|
     t.string  "name",  limit: 255
@@ -20,12 +20,12 @@ ActiveRecord::Schema.define(version: 20170323160915) do
 
   create_table "records", force: :cascade do |t|
     t.integer  "pure_id"
-    t.string   "title",                     limit: 255
+    t.text     "title"
     t.string   "creator_name",              limit: 255
     t.string   "doi",                       limit: 255
     t.datetime "doi_created_at"
     t.string   "doi_created_by",            limit: 255
-    t.string   "url",                       limit: 255
+    t.text     "url"
     t.datetime "url_updated_at"
     t.string   "url_updated_by",            limit: 255
     t.datetime "metadata_updated_at"
