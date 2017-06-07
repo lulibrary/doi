@@ -7,6 +7,7 @@ Mint is a Rails app for minting Digital Object Identifiers (DOIs).
 Status
 -
 [![Code Climate](https://codeclimate.com/github/lulibrary/doi/badges/gpa.svg)](https://codeclimate.com/github/lulibrary/doi)
+[![Dependency Status](https://www.versioneye.com/user/projects/5937d310b6ed0f004f35e3fc/badge.svg?style=flat-square)](https://www.versioneye.com/user/projects/5937d310b6ed0f004f35e3fc)
 
 How does it work?
 -
