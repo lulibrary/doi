@@ -4,6 +4,10 @@ About
 -
 Mint is a Rails app for minting Digital Object Identifiers (DOIs).
 
+Status
+-
+[![Code Climate](https://codeclimate.com/github/lulibrary/doi/badges/gpa.svg)](https://codeclimate.com/github/lulibrary/doi)
+
 How does it work?
 -
 The only input required by the user is a Pure Id. Using this, Mint retrieves
