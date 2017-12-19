@@ -11,19 +11,19 @@ module Pure
     data = {}
     # is it a dataset?
     dataset_extractor = Puree::Extractor::Dataset.new @pure_config
-    metadata_model = dataset_extractor.find id: pure_id
+    metadata_model = dataset_extractor.find pure_id
     if metadata_model
       data['model'] = metadata_model
       data['type'] = 'Dataset'
       return data
     end
 
-    # is it a publication of some kind?
-    publication_extractor = Puree::Extractor::Publication.new @pure_config
-    metadata_model = publication_extractor.find id: pure_id
+    # is it a research output of some kind?
+    research_output_extractor = Puree::Extractor::ResearchOutput.new @pure_config
+    metadata_model = research_output_extractor.find pure_id
     if metadata_model
       data['model'] = metadata_model
-      data['type'] = 'Publication'
+      data['type'] = 'ResearchOutput'
       return data
     end
 
@@ -106,7 +106,7 @@ module Pure
     summary['model'] = pure_metadata.class.to_s.gsub('Puree::Model::','').downcase
 
     output_type = nil
-    if summary['model'] === 'publication'
+    if summary['model'] === 'researchoutput'
       output_type = pure_metadata.type
     end
     if summary['model'] === 'dataset'

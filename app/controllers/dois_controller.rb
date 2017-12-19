@@ -3,6 +3,7 @@ require 'time'
 require 'hash_to_html'
 require 'research_metadata'
 require 'puree'
+require 'net/http'
 
 class DoisController < ApplicationController
   include NetHttpHelper
@@ -35,7 +36,7 @@ class DoisController < ApplicationController
           extractor = Puree::Extractor::Thesis.new @pure_config
         end
 
-        metadata_model = extractor.find id: reservation.pure_id.to_s
+        metadata_model = extractor.find reservation.pure_id.to_s
         if metadata_model
           summary = pure_summary metadata_model
           reservation_summary['title'] = summary['title']
@@ -571,8 +572,7 @@ class DoisController < ApplicationController
   private
 
   def pure_up?
-    server = Puree::Extractor::Server.new @pure_config
-    !server.find.version.nil?
+    HTTP.head(ENV['PURE_URL']).code === 401
   end
 
   def datacite_up?
@@ -580,14 +580,16 @@ class DoisController < ApplicationController
   end
 
   def pure_version
-    server = Puree::Extractor::Server.new @pure_config
-    server.find.version
+    # server = Puree::Extractor::Server.new @pure_config
+    # server.find.version
   end
 
   def remote_doi_minted?(resource, username, password, pem)
     uri = URI.parse(resource)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
+    # Next three lines work even when certificate has expired
+    # so could be removed, along with pem parameter
     http.cert = OpenSSL::X509::Certificate.new(pem)
     http.key = OpenSSL::PKey::RSA.new(pem)
     http.verify_mode = OpenSSL::SSL::VERIFY_PEER
@@ -730,8 +732,8 @@ class DoisController < ApplicationController
     if output_type === 'Dataset'
       transformer = ResearchMetadata::Transformer::Dataset.new @pure_config
     end
-    publication_whitelist = ['Doctoral Thesis', "Master's Thesis"]
-    if publication_whitelist.include? output_type
+    research_output_whitelist = ['Doctoral Thesis', "Master's Thesis"]
+    if research_output_whitelist.include? output_type
       transformer = ResearchMetadata::Transformer::Thesis.new @pure_config
     end
     transformer
@@ -1017,6 +1019,7 @@ def load_config
   @pure_config = {
       url:      ENV['PURE_URL'],
       username: ENV['PURE_USERNAME'],
-      password: ENV['PURE_PASSWORD']
+      password: ENV['PURE_PASSWORD'],
+      api_key:  ENV['PURE_API_KEY']
   }
 end
