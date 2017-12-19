@@ -61,8 +61,8 @@ gem 'will_paginate', '~> 3.0.6'
 gem 'hash_to_html'
 
 # pure client
-# gem 'puree'
+gem 'puree', '~> 1.7'
 
 # pure to datacite transformer
-gem 'research_metadata'
+gem 'research_metadata', '~> 1.1.2'
 # gem 'research_metadata', '~> 1.1.1', path: '~/d/research_metadata'
