@@ -589,7 +589,6 @@ class DoisController < ApplicationController
   end
 
   def create_remote_doi(endpoint, doi, url, username, password)
-
     uri = URI.parse(endpoint)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
