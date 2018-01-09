@@ -53,19 +53,6 @@ dotenv. For a  Rails development environment name the file
 ```env.environment.example``` which is the development version with the
 credentials removed.
 
-#### Certificate
-The environment file references a PEM file which is used for SSL connections
-with DOI Registration Agents and Pure Web Services.
-
-Create the self-signed certificate:
-```
-$ openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout doi.key -out doi.crt
-```
-Create the PEM:
-```
-$ cat doi.crt doi.key > doi.pem
-```
-
 #### Rails secret
 Randomised string used by Rails to verify the integrity of signed cookies.
 Generate a new one:
