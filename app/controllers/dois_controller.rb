@@ -304,6 +304,7 @@ class DoisController < ApplicationController
       end
     end
 
+    flash[:notice] = doi + ' reserved'
     redirect_to :root
   end
 
