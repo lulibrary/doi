@@ -8,8 +8,6 @@ class DoisController < ApplicationController
   include NetHttpHelper
   include Pure
   include PureApi
-  # include CrosswalkPureToDatacite
-  # include ResearchMetadata
 
   before_action :load_config
 
