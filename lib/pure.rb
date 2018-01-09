@@ -38,16 +38,12 @@ module Pure
     return nil
   end
 
-  def pure_summary(pure_metadata)
-    return pure_native_summary(pure_metadata)
-  end
-
   # Get a summary of a Pure record
   #
   # output_type is based on Pure's research output type
   # Dataset is not considered an output type in Pure but for consistency here it is included (uppercase)
   # Publication types are raw values from the Pure API (uppercase) via Puree e.g. 'Doctoral Thesis'
-  def pure_native_summary(pure_metadata)
+  def pure_summary(pure_metadata)
     summary = {}
     summary['model'] = pure_metadata.class.to_s.gsub('Puree::Model::','').downcase
 
