@@ -11,7 +11,7 @@
   <br/>
 
   <h1>DOIs</h1>
-  <% if ActiveRecord::Base.connection.adapter_name == 'PostgreSQL'%>
+  <% if ActiveRecord::Base.connection.adapter_name.downcase == 'postgresql' %>
       <p>
         Full-text search for minted DOIs on title, description, keywords, person name, DOI, file sizes, file rights and Pure UUID. For example, using   <i>regulat</i> as a word prefix would match the whole words <i>regulate</i>, <i>regulatory</i> and <i>Regulation</i>.
       </p>
