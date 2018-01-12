@@ -66,3 +66,5 @@ gem 'puree', '~> 1.2'
 # pure to datacite transformer
 gem 'research_metadata', '~> 1.1.2'
 # gem 'research_metadata', '~> 1.1.1', path: '~/d/research_metadata'
+
+gem 'pg_search'

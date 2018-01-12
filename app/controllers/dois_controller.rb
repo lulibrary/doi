@@ -45,6 +45,12 @@ class DoisController < ApplicationController
     @reservation_summaries = reservation_summaries
   end
 
+  def search_full_text
+    if params[:term]
+      @records = Record.search_stuff(params[:term]).with_pg_search_highlight
+    end
+  end
+
   def search
     @debug_endpoints = ENV['DEBUG_ENDPOINTS']
     @pure_up = pure_up?

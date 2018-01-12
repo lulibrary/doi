@@ -7,6 +7,9 @@ Rails.application.routes.draw do
     post 'dois/unreserve'
     post 'dois/find'
     get 'dois/find'
+
+    post 'dois/search_full_text'
+
     post 'dois/:id/metadata' => 'dois#edit_metadata_post', as: :edit_metadata
     # get 'dois/batch' => 'dois#edit_metadata_batch', as: :batch_update for testing via interface
     resources 'dois'

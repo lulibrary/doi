@@ -94,6 +94,10 @@ GEM
     nokogiri (1.8.0)
       mini_portile2 (~> 2.2.0)
     pg (0.19.0)
+    pg_search (2.1.2)
+      activerecord (>= 4.2)
+      activesupport (>= 4.2)
+      arel (>= 6)
     public_suffix (2.0.5)
     puree (1.2.0)
       http (~> 2.0)
@@ -186,6 +190,7 @@ DEPENDENCIES
   jquery-rails
   nokogiri
   pg
+  pg_search
   puree (~> 1.2)
   rails (= 4.2.0)
   research_metadata (~> 1.1.2)
