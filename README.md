@@ -6,13 +6,13 @@ Mint is a Rails app for minting Digital Object Identifiers (DOIs).
 
 How does it work?
 -
-The only input required by the user is a Pure Id. Using this, Mint retrieves
-metadata from Pure Web Services and performs a cross-walk to the metadata schema
-for the target DOI Registration Agent. DOIs and URLs (to which the DOIs resolve)
-are generated automatically for Pure portal and together with the metadata, are
-used to mint a DOI with the target DOI Registration Agent. DOI minting
-transactions are stored in a local database. DOIs can be reserved for deferred
-minting.
+The only input required by the user is a Pure ID. Using this, Mint retrieves
+metadata from Pure and prepares metadata for the target DOI Registration Agent.
+DOIs and URLs (to which the DOIs resolve) are generated automatically for Pure
+portal and together with the metadata are used to mint a DOI with the target
+DOI Registration Agent. DOI minting transactions are stored in a database.
+DOIs can be reserved for deferred minting. A full-text search facility is
+available for minted DOIs when the database adapter is PostgreSQL.
 
 Supported DOI registration agents
 -
