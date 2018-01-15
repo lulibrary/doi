@@ -56,17 +56,30 @@ module Pure
     end
     summary['output_type'] = output_type
     summary['title'] = pure_metadata.title
-    creator_name = ''
-    if !pure_metadata.persons_internal.empty?
-      creator_name = pure_metadata.persons_internal[0].name.last_first
-    elsif !pure_metadata.persons_external.empty?
-      creator_name = pure_metadata.persons_external[0].name.last_first
-    elsif !pure_metadata.persons_other.empty?
-      creator_name = pure_metadata.persons_other[0].name.last_first
+    all_creators = creators(pure_metadata)
+    if all_creators.empty?
+      summary['creator_name'] = nil
+    else
+      summary['creator_name'] = all_creators.first.name.last_first
     end
-    summary['creator_name'] = creator_name
     summary['pure_uuid'] = pure_metadata.uuid
     summary
+  end
+
+  # For UI verification, as sometimes Pure records are made without a creator
+  # At least one creator is required by DataCite
+  def creators(pure_metadata)
+    creators = []
+    pure_metadata.persons_internal.each do |i|
+      creators << i if i.role.downcase === 'creator'
+    end
+    pure_metadata.persons_external.each do |i|
+      creators << i if i.role.downcase === 'creator'
+    end
+    pure_metadata.persons_other.each do |i|
+      creators << i if i.role.downcase === 'creator'
+    end
+    creators
   end
 
 end

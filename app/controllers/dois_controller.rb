@@ -96,6 +96,12 @@ class DoisController < ApplicationController
     if sm.state == 'creating_doi'
       summary = pure_summary metadata_model
 
+      if !summary['creator_name']
+        flash[:error] = "Minting for #{params[:pure_id]} is not possible as there is no creator defined in Pure"
+        redirect_to :back
+        return
+      end
+
       if !in_output_whitelist?(summary['output_type'])
         flash[:error] = "It is not possible to mint a DOI for an output of type #{summary['output_type']}"
         redirect_to :back
