@@ -71,15 +71,20 @@ module Pure
   def creators(pure_metadata)
     creators = []
     pure_metadata.persons_internal.each do |i|
-      creators << i if i.role.downcase === 'creator'
+      creators << i if creator? i.role
     end
     pure_metadata.persons_external.each do |i|
-      creators << i if i.role.downcase === 'creator'
+      creators << i if creator? i.role
     end
     pure_metadata.persons_other.each do |i|
-      creators << i if i.role.downcase === 'creator'
+      creators << i if creator? i.role
     end
     creators
+  end
+
+  def creator?(role)
+    roles = %w(creator author)
+    roles.include? role.downcase
   end
 
 end
