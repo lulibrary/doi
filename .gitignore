@@ -17,6 +17,7 @@
 
 .env.development
 .env.production
+.env.test
 .idea
 
 /public/assets
