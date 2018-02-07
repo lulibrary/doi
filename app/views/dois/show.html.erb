@@ -26,7 +26,7 @@
       </td>
     </tr>
 
-    <% if @metadata.key? 'descriptions' %>
+    <% if @metadata['descriptions'] %>
         <tr><td class="<%=label_class%>"><strong>Description</strong></td><td><%= @metadata["descriptions"]["description"] %></td></tr>
     <% end %>
 
