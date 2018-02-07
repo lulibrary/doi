@@ -53,9 +53,23 @@ class DoisController < ApplicationController
 
   def search
     @debug_endpoints = ENV['DEBUG_ENDPOINTS']
-    @pure_up = pure_up?
-    @datacite_up = datacite_up?
-    @pure_version = pure_version
+
+    pure_service_error = discover_pure_service_error
+    if pure_service_error
+      add_service_error pure_service_error
+      @pure_up = false
+    else
+      @pure_up = true
+      @pure_version = pure_version
+    end
+
+    datacite_service_error = discover_datacite_service_error
+    if datacite_service_error
+      add_service_error datacite_service_error
+      @datacite_up = false
+    else
+      @datacite_up = true
+    end
   end
 
   def find
@@ -572,13 +586,24 @@ class DoisController < ApplicationController
 
   private
 
-  def pure_up?
-    server = Puree::Extractor::Server.new @pure_config
-    !server.find.version.nil?
+  def discover_service_error(service_name, uri)
+    HTTP.get uri
+    nil
+    rescue StandardError => e
+      "#{service_name} - #{e.class} - #{e} - for URI #{uri}"
   end
 
-  def datacite_up?
-    HTTP.head(ENV['DATACITE_ENDPOINT']).code === 200
+  def add_service_error(error)
+    flash[:error] = [] if !flash[:error]
+    flash[:error] << error
+  end
+
+  def discover_pure_service_error
+    discover_service_error 'Pure', ENV['PURE_URL']
+  end
+
+  def discover_datacite_service_error
+    discover_service_error 'DataCite', ENV['DATACITE_ENDPOINT']
   end
 
   def pure_version
