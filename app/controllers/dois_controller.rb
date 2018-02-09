@@ -4,6 +4,7 @@ require 'hash_to_html'
 require 'research_metadata'
 require 'puree'
 require 'net/http'
+require 'json'
 
 class DoisController < ApplicationController
   include NetHttpHelper
@@ -491,6 +492,15 @@ class DoisController < ApplicationController
         end
         record.metadata_updated_by = user
         record.metadata = serialised_metadata
+
+        # if title has changed
+        serialised_title = title_from_serialised_metadata serialised_metadata
+        record.title = serialised_title if record.title != serialised_title
+
+        # if first creator has changed
+        serialised_creator = creator_from_serialised_metadata serialised_metadata
+        record.creator_name = serialised_creator if record.creator_name != serialised_creator
+
         record.save
       end
       return success
@@ -585,6 +595,30 @@ class DoisController < ApplicationController
   end
 
   private
+
+  def title_from_serialised_metadata(serialised_metadata)
+    hash = JSON.parse serialised_metadata
+    data = nil
+    if hash['resource']['titles']['title'].class == String
+      data = hash['resource']['titles']['title']
+    end
+    if hash['resource']['titles']['title'].class == Array
+      data = hash['resource']['titles']['title'].first
+    end
+    data
+  end
+
+  def creator_from_serialised_metadata(serialised_metadata)
+    hash = JSON.parse serialised_metadata
+    data = nil
+    if hash['resource']['creators']['creator'].class == Hash
+      data = hash['resource']['creators']['creator']['creatorName']
+    end
+    if hash['resource']['creators']['creator'].class == Array
+      data = hash['resource']['creators'].first['creatorName']
+    end
+    data
+  end
 
   def discover_service_error(service_name, uri)
     HTTP.get uri
