@@ -3,13 +3,12 @@ require 'time'
 require 'hash_to_html'
 require 'research_metadata'
 require 'puree'
+require 'net/http'
+require 'json'
 
 class DoisController < ApplicationController
   include NetHttpHelper
   include Pure
-  include PureApi
-  # include CrosswalkPureToDatacite
-  # include ResearchMetadata
 
   before_action :load_config
 
@@ -47,11 +46,31 @@ class DoisController < ApplicationController
     @reservation_summaries = reservation_summaries
   end
 
+  def search_full_text
+    if params[:term]
+      @records = Record.search_stuff(params[:term]).with_pg_search_highlight
+    end
+  end
+
   def search
     @debug_endpoints = ENV['DEBUG_ENDPOINTS']
-    @pure_up = pure_up?
-    @datacite_up = datacite_up?
-    @pure_version = pure_version
+
+    pure_service_error = discover_pure_service_error
+    if pure_service_error
+      add_service_error pure_service_error
+      @pure_up = false
+    else
+      @pure_up = true
+      @pure_version = pure_version
+    end
+
+    datacite_service_error = discover_datacite_service_error
+    if datacite_service_error
+      add_service_error datacite_service_error
+      @datacite_up = false
+    else
+      @datacite_up = true
+    end
   end
 
   def find
@@ -92,6 +111,12 @@ class DoisController < ApplicationController
     if sm.state == 'creating_doi'
       summary = pure_summary metadata_model
 
+      if !summary['creator_name']
+        flash[:error] = "Minting for #{params[:pure_id]} is not possible as there is no creator defined in Pure"
+        redirect_to :back
+        return
+      end
+
       if !in_output_whitelist?(summary['output_type'])
         flash[:error] = "It is not possible to mint a DOI for an output of type #{summary['output_type']}"
         redirect_to :back
@@ -117,14 +142,12 @@ class DoisController < ApplicationController
     if pure_id.empty?
       redirect_to :dois_search
     end
-    #@display_prefixes = display_prefixes
     @reserved_doi = reserved_doi? pure_id
   end
 
   def edit
     @record = Record.find(params[:id])
     @metadata = get_db_metadata
-    # @display_prefixes = display_prefixes
   end
 
   def show
@@ -139,7 +162,6 @@ class DoisController < ApplicationController
   def create
     sm = DoiCreateStateMachine.new
 
-    # clean_doi_path = clean_doi_path(params[:doi])
     pure_id = params[:pure_id]
     output_type = params[:output_type]
 
@@ -174,9 +196,8 @@ class DoisController < ApplicationController
     resource = ENV['DATACITE_ENDPOINT'] + '/doi/' + doi
     username = ENV['DATACITE_USERNAME']
     password = ENV['DATACITE_PASSWORD']
-    pem = File.read(ENV['PEM'])
 
-    if remote_doi_minted?(resource, username, password, pem)
+    if remote_doi_minted?(resource, username, password)
       sm.doi_minted
       # do nothing
       flash[:error] = doi + ' already minted'
@@ -229,9 +250,8 @@ class DoisController < ApplicationController
 
     username = ENV['DATACITE_USERNAME']
     password = ENV['DATACITE_PASSWORD']
-    pem = File.read(ENV['PEM'])
 
-    response = create_remote_doi(endpoint, doi, url, username, password, pem)
+    response = create_remote_doi(endpoint, doi, url, username, password)
 
     if response.code != '201'
       return 'Datacite ' + response.code + ' ' + response.body
@@ -304,6 +324,7 @@ class DoisController < ApplicationController
       end
     end
 
+    flash[:notice] = doi + ' reserved'
     redirect_to :root
   end
 
@@ -359,9 +380,8 @@ class DoisController < ApplicationController
     if url_dirty
       username = ENV['DATACITE_USERNAME']
       password = ENV['DATACITE_PASSWORD']
-      pem = File.read(ENV['PEM'])
 
-      response = create_remote_doi(endpoint, doi, url, username, password, pem)
+      response = create_remote_doi(endpoint, doi, url, username, password)
       if response.code != '201'
         if !batch_mode
           redirect_to :back,
@@ -447,9 +467,8 @@ class DoisController < ApplicationController
       endpoint = ENV['DATACITE_ENDPOINT'] + ENV['DATACITE_RESOURCE_METADATA']
       username = ENV['DATACITE_USERNAME']
       password = ENV['DATACITE_PASSWORD']
-      pem = File.read(ENV['PEM'])
       response = update_remote_metadata(endpoint, datacite_metadata, username,
-                                        password, pem)
+                                        password)
       if response.code != '201'
         if !batch_mode
           redirect_to :back,
@@ -473,6 +492,15 @@ class DoisController < ApplicationController
         end
         record.metadata_updated_by = user
         record.metadata = serialised_metadata
+
+        # if title has changed
+        serialised_title = title_from_serialised_metadata serialised_metadata
+        record.title = serialised_title if record.title != serialised_title
+
+        # if first creator has changed
+        serialised_creator = creator_from_serialised_metadata serialised_metadata
+        record.creator_name = serialised_creator if record.creator_name != serialised_creator
+
         record.save
       end
       return success
@@ -533,8 +561,6 @@ class DoisController < ApplicationController
     @data = records; nil   # suppress output
   end
 
-
-
   def edit_url_batch
     logger.info ''
     logger.info ''
@@ -570,13 +596,48 @@ class DoisController < ApplicationController
 
   private
 
-  def pure_up?
-    server = Puree::Extractor::Server.new @pure_config
-    !server.find.version.nil?
+  def title_from_serialised_metadata(serialised_metadata)
+    hash = JSON.parse serialised_metadata
+    data = nil
+    if hash['resource']['titles']['title'].class == String
+      data = hash['resource']['titles']['title']
+    end
+    if hash['resource']['titles']['title'].class == Array
+      data = hash['resource']['titles']['title'].first
+    end
+    data
   end
 
-  def datacite_up?
-    HTTP.head(ENV['DATACITE_ENDPOINT']).code === 200
+  def creator_from_serialised_metadata(serialised_metadata)
+    hash = JSON.parse serialised_metadata
+    data = nil
+    if hash['resource']['creators']['creator'].class == Hash
+      data = hash['resource']['creators']['creator']['creatorName']
+    end
+    if hash['resource']['creators']['creator'].class == Array
+      data = hash['resource']['creators'].first['creatorName']
+    end
+    data
+  end
+
+  def discover_service_error(service_name, uri)
+    HTTP.get uri
+    nil
+    rescue StandardError => e
+      "#{service_name} - #{e.class} - #{e} - for URI #{uri}"
+  end
+
+  def add_service_error(error)
+    flash[:error] = [] if !flash[:error]
+    flash[:error] << error
+  end
+
+  def discover_pure_service_error
+    discover_service_error 'Pure', ENV['PURE_URL']
+  end
+
+  def discover_datacite_service_error
+    discover_service_error 'DataCite', ENV['DATACITE_ENDPOINT']
   end
 
   def pure_version
@@ -584,13 +645,10 @@ class DoisController < ApplicationController
     server.find.version
   end
 
-  def remote_doi_minted?(resource, username, password, pem)
+  def remote_doi_minted?(resource, username, password)
     uri = URI.parse(resource)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
-    http.cert = OpenSSL::X509::Certificate.new(pem)
-    http.key = OpenSSL::PKey::RSA.new(pem)
-    http.verify_mode = OpenSSL::SSL::VERIFY_PEER
     req = Net::HTTP::Get.new(uri)
     req.basic_auth username, password
     response = http.request(req)
@@ -601,40 +659,10 @@ class DoisController < ApplicationController
     end
   end
 
-  def build_xml
-    builder = Nokogiri::XML::Builder.new(:encoding => 'UTF-8') do |xml|
-      xml.resource( 'xmlns' => 'http://datacite.org/schema/kernel-3',
-                    'xmlns:xsi' => 'http://www.w3.org/2001/XMLSchema-instance',
-                    'xsi:schemaLocation' => 'http://datacite.org/schema/kernel-3 http://schema.datacite.org/meta/kernel-3/metadata.xsd'
-      ) {
-        xml.identifier params[:doi], :identifierType => 'DOI'
-        xml.creators {
-          params[:creatorName].each do |creatorName|
-            if !creatorName.blank?
-              xml.creator {
-                xml.creatorName_ creatorName
-              }
-            end
-          end
-        }
-        xml.titles {
-          xml.title params[:title]
-        }
-        xml.publisher params[:publisher]
-        xml.publicationYear params[:publicationYear]
-      }
-    end
-    builder.to_xml
-  end
-
-  def create_remote_doi(endpoint, doi, url, username, password, pem)
-
+  def create_remote_doi(endpoint, doi, url, username, password)
     uri = URI.parse(endpoint)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
-    http.cert = OpenSSL::X509::Certificate.new(pem)
-    http.key = OpenSSL::PKey::RSA.new(pem)
-    http.verify_mode = OpenSSL::SSL::VERIFY_PEER
     req = Net::HTTP::Post.new(uri)
     req.content_type = 'text/plain;charset=UTF-8'
     req.basic_auth username, password
@@ -648,13 +676,10 @@ class DoisController < ApplicationController
     response
   end
 
-  def get_remote_dois(resource, username, password, pem)
+  def get_remote_dois(resource, username, password)
     uri = URI.parse(resource)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
-    http.cert = OpenSSL::X509::Certificate.new(pem)
-    http.key = OpenSSL::PKey::RSA.new(pem)
-    http.verify_mode = OpenSSL::SSL::VERIFY_PEER
     req = Net::HTTP::Get.new(uri)
     req.basic_auth username, password
     response = http.request(req)
@@ -687,23 +712,12 @@ class DoisController < ApplicationController
     resource_type.count + 1
   end
 
-  # def get_doi_registration_agent_next_id(doi_registration_agent_id)
-  #   agent = DoiRegistrationAgent.find(doi_registration_agent_id)
-  #   agent.count + 1
-  # end
-
   def increment_resource_type_count(output_type)
     resource_type_id = normalise_resource_name output_type
     resource_type = ResourceType.where(id: resource_type_id).first
     resource_type.count += 1
     resource_type.save
   end
-
-  # def increment_doi_registration_agent_count(doi_registration_agent_id)
-  #   agent = DoiRegistrationAgent.find(doi_registration_agent_id)
-  #   agent.count += 1
-  #   agent.save
-  # end
 
   def get_resource(output_type)
     resource_type_id = normalise_resource_name output_type
@@ -720,7 +734,6 @@ class DoisController < ApplicationController
     resource_type = ResourceType.where(id: resource_type_id).first
     resource_type.url_name
   end
-
 
 
   # METADATA
@@ -745,9 +758,8 @@ class DoisController < ApplicationController
     endpoint = ENV['DATACITE_ENDPOINT'] + ENV['DATACITE_RESOURCE_METADATA']
     username = ENV['DATACITE_USERNAME']
     password = ENV['DATACITE_PASSWORD']
-    pem = File.read(ENV['PEM'])
     response = update_remote_metadata(endpoint, datacite_metadata, username,
-                                      password, pem)
+                                      password)
     if response.code != '201'
       return 'Datacite ' + response.code + ' ' + response.body
     end
@@ -756,7 +768,6 @@ class DoisController < ApplicationController
 
     agent_id = params[:record][:doi_registration_agent_id]
 
-    # resource_type_id = params[:record][:resource_type_id]
     resource_type_id = normalise_resource_name params[:output_type]
 
     now = DateTime.now
@@ -778,13 +789,10 @@ class DoisController < ApplicationController
     return 'success'
   end
 
-  def update_remote_metadata(endpoint, xml, username, password, pem)
+  def update_remote_metadata(endpoint, xml, username, password)
     uri = URI.parse(endpoint)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
-    http.cert = OpenSSL::X509::Certificate.new(pem)
-    http.key = OpenSSL::PKey::RSA.new(pem)
-    http.verify_mode = OpenSSL::SSL::VERIFY_PEER
     req = Net::HTTP::Post.new(uri)
     req.initialize_http_header({'Accept' => 'application/xml;charset=UTF-8'})
     req.content_type = 'application/xml;charset=UTF-8'
@@ -801,135 +809,11 @@ class DoisController < ApplicationController
     response
   end
 
-  # def get_remote_metadata_pure(endpoint, username, password, pem)
-  #   return get_remote_metadata_pure_native(endpoint, username, password, pem)
-  #   # get_remote_metadata_pure_local(endpoint, username, password, pem)
-  # end
-  #
-  # def get_remote_metadata_pure_native(endpoint, username, password, pem)
-  #   uri = URI.parse(endpoint)
-  #   http = Net::HTTP.new(uri.host, uri.port)
-  #   # http.use_ssl = true
-  #   # http.cert = OpenSSL::X509::Certificate.new(pem)
-  #   # http.key = OpenSSL::PKey::RSA.new(pem)
-  #   # http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-  #   req = Net::HTTP::Get.new(uri)
-  #
-  #   auth = Base64::encode64(username+':'+"#{password}")
-  #   req.initialize_http_header({'Accept' => 'application/xml',
-  #                               'Authorization' => 'Basic ' + auth
-  #                              })
-  #
-  #   req.content_type = 'application/xml;charset=UTF-8'
-  #
-  #   response = http.request(req)
-  #   @debug = false
-  #   if @debug
-  #     @response_class = response.class
-  #     @headers = {}
-  #     @headers[:request] = headers(req)
-  #     @headers[:response] = headers(response)
-  #   end
-  #
-  #   response
-  #
-  # end
-
   def serialise_xml_to_json(xml)
     Hash.from_xml(xml).to_json.to_s
   end
 
-  def get_remote_metadata_pure_local(endpoint, username, password, pem)
-    uri = URI.parse(endpoint)
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.use_ssl = true
-    http.cert = OpenSSL::X509::Certificate.new(pem)
-    http.key = OpenSSL::PKey::RSA.new(pem)
-    http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-    req = Net::HTTP::Get.new(uri)
-
-    # Pure API does not use Basic word before base64 encoded string!
-    # req.basic_auth username, password
-    auth = Base64::encode64(username+':'+password)
-    req.initialize_http_header({'Accept' => 'application/xml',
-                                'Authorization' => auth})
-
-    req.content_type = 'application/xml;charset=UTF-8'
-
-    response = http.request(req)
-    @debug = true
-    if @debug
-      @response_class = response.class
-      @headers = {}
-      @headers[:request] = headers(req)
-      @headers[:response] = headers(response)
-    end
-
-    response
-
-  end
-
-  def pure_native_orcid(uuid)
-    endpoint = ENV['PURE_URL'] + '/person?rendering=long&uuids.uuid=' + uuid
-
-    username = ENV['PURE_USERNAME']
-    password = ENV['PURE_PASSWORD']
-    pem = File.read(ENV['PEM'])
-    response = get_remote_metadata_pure(endpoint, username, password, pem)
-
-    html = response.body
-
-    doc = Nokogiri::HTML(html)
-    orcid = doc.xpath("//table/tbody/tr[th='ORCID']/td").text
-    if isORCID?(orcid)
-      return orcid
-    else
-      return ''
-    end
-  end
-
-  def isORCID?(str)
-    if /^\d{4}-\d{4}-\d{4}-\d{4}$/.match(str)
-      return true
-    else
-      return false
-    end
-  end
-
-  def get_publication_from_uuid_pure_native(uuid)
-    endpoint = ENV['PURE_URL'] + '/publication?rendering=xml_short&uuids.uuid=' + uuid
-
-    username = ENV['PURE_USERNAME']
-    password = ENV['PURE_PASSWORD']
-    pem = File.read(ENV['PEM'])
-    response = get_remote_metadata_pure(endpoint, username, password, pem)
-  end
-
-  def get_project_from_uuid_pure_native(uuid)
-    # AS AT 2016-01-14 THERE IS NO SEMANTICALLY MEANINGFUL WAY TO INCLUDE THE RELATED PROJECT(S) IN THE METADATA
-    # isDocumentedBy for a project url (stab1:projectURL) is the closest but inaccurate as it describes the project not the dataset
-    endpoint = ENV['PURE_URL'] + '/project?rendering=xml_long&uuids.uuid=' + uuid
-
-    username = ENV['PURE_USERNAME']
-    password = ENV['PURE_PASSWORD']
-    pem = File.read(ENV['PEM'])
-    response = get_remote_metadata_pure(endpoint, username, password, pem)
-  end
-
   # UTILS
-
-  # def display_prefixes
-  #   doi = ENV['DATACITE_DOI_IDENTIFIER']
-  #   if !ENV['DATACITE_DOI_PREFIX'].blank?
-  #     doi += '/' + ENV['DATACITE_DOI_PREFIX']
-  #   end
-  #   doi += '/'
-  #   host = ENV['URL_HOST_1'] + '/'
-  #   {
-  #       :doi => doi,
-  #       :url =>  host
-  #   }
-  # end
 
   # for making a random doi suffix for testing
   def token(length=16)
