@@ -26,8 +26,28 @@
       </td>
     </tr>
 
-    <% if @metadata.key? 'descriptions' %>
-    <tr><td class="<%=label_class%>"><strong>Description</strong></td><td><%= @metadata["descriptions"]["description"] %></td></tr>
+    <% if @metadata['descriptions'] %>
+        <tr><td class="<%=label_class%>"><strong>Description</strong></td><td><%= @metadata["descriptions"]["description"] %></td></tr>
+    <% end %>
+
+    <% if @metadata['subjects'] %>
+        <tr>
+          <td class="<%=label_class%>"><strong>Keywords</strong></td>
+          <td>
+            <% case @metadata['subjects']['subject'] %>
+            <% when Array %>
+                <ul>
+                  <% @metadata['subjects']['subject'].each do |i| %>
+                      <li>
+                        <%= i %>
+                      </li>
+                  <% end %>
+                </ul>
+            <% else %>
+                <%= @metadata['subjects']['subject'] %>
+            <% end %>
+          </td>
+        </tr>
     <% end %>
 
     <tr>
@@ -59,7 +79,8 @@
     <% end %>
 
     <% if @metadata['sizes'] %>
-        <tr><td class="<%=label_class%>"><strong>Sizes</strong></td>
+        <tr>
+          <td class="<%=label_class%>"><strong>Sizes</strong></td>
           <td>
             <% case @metadata['sizes']['size'] %>
             <% when Array %>
@@ -78,9 +99,9 @@
     <% end %>
 
     <% if @metadata['formats'] %>
-        <tr><td class="<%=label_class%>"><strong>Formats</strong></td>
+        <tr>
+          <td class="<%=label_class%>"><strong>Formats</strong></td>
           <td>
-
             <% case @metadata['formats']['format'] %>
             <% when Array %>
                 <ul>
@@ -98,9 +119,9 @@
     <% end %>
 
     <% if @metadata['rightsList'] %>
-        <tr><td class="<%=label_class%>"><strong>Rights</strong></td>
+        <tr>
+          <td class="<%=label_class%>"><strong>Rights</strong></td>
           <td>
-
             <% case @metadata['rightsList']['rights'] %>
             <% when Array %>
                 <ul>
