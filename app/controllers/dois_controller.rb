@@ -443,7 +443,7 @@ class DoisController < ApplicationController
     end
 
     if transformer
-      datacite_metadata = transformer.transform id: pure_id,
+      datacite_metadata = transformer.transform id: pure_id.to_s,
                                                 doi: doi
     end
 
@@ -615,7 +615,7 @@ class DoisController < ApplicationController
       data = hash['resource']['creators']['creator']['creatorName']
     end
     if hash['resource']['creators']['creator'].class == Array
-      data = hash['resource']['creators'].first['creatorName']
+      data = hash['resource']['creators']['creator'].first['creatorName']
     end
     data
   end
