@@ -22,5 +22,6 @@ module Doi
 
     config.autoload_paths += %W(#{config.root}/lib)
 
+    VERSION = '0.1.1'
   end
 end

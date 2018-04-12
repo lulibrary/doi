@@ -34,7 +34,7 @@ class DoisController < ApplicationController
           extractor = Puree::Extractor::Thesis.new @pure_config
         end
 
-        metadata_model = extractor.find id: reservation.pure_id.to_s
+        metadata_model = extractor.find reservation.pure_id.to_s
         if metadata_model
           summary = pure_summary metadata_model
           reservation_summary['title'] = summary['title']
@@ -443,7 +443,7 @@ class DoisController < ApplicationController
     end
 
     if transformer
-      datacite_metadata = transformer.transform id: pure_id,
+      datacite_metadata = transformer.transform id: pure_id.to_s,
                                                 doi: doi
     end
 
@@ -615,7 +615,7 @@ class DoisController < ApplicationController
       data = hash['resource']['creators']['creator']['creatorName']
     end
     if hash['resource']['creators']['creator'].class == Array
-      data = hash['resource']['creators'].first['creatorName']
+      data = hash['resource']['creators']['creator'].first['creatorName']
     end
     data
   end
@@ -641,8 +641,8 @@ class DoisController < ApplicationController
   end
 
   def pure_version
-    server = Puree::Extractor::Server.new @pure_config
-    server.find.version
+    # server = Puree::Extractor::Server.new @pure_config
+    # server.find.version
   end
 
   def remote_doi_minted?(resource, username, password)
@@ -743,8 +743,8 @@ class DoisController < ApplicationController
     if output_type === 'Dataset'
       transformer = ResearchMetadata::Transformer::Dataset.new @pure_config
     end
-    publication_whitelist = ['Doctoral Thesis', "Master's Thesis"]
-    if publication_whitelist.include? output_type
+    research_output_whitelist = ['Doctoral Thesis', "Master's Thesis"]
+    if research_output_whitelist.include? output_type
       transformer = ResearchMetadata::Transformer::Thesis.new @pure_config
     end
     transformer
@@ -901,6 +901,7 @@ def load_config
   @pure_config = {
       url:      ENV['PURE_URL'],
       username: ENV['PURE_USERNAME'],
-      password: ENV['PURE_PASSWORD']
+      password: ENV['PURE_PASSWORD'],
+      api_key:  ENV['PURE_API_KEY']
   }
 end

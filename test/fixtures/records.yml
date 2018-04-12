@@ -1,0 +1,33 @@
+one:
+  pure_id: 123
+  title: Foo
+  creator_name: Stan Laurel
+  doi: 1/foo
+  doi_created_at: 2018-01-03T11:07:33+00:00
+  doi_created_by: aac
+  url: http://foo
+  url_updated_at: 2018-01-03T11:07:33+00:00
+  url_updated_by: aac
+  metadata_updated_at:
+  metadata_updated_by:
+  doi_registration_agent_id: 1
+  resource_type_id: 1
+  pure_uuid: de6f8da1-9876-41eb-973c-d54a868ad800
+  metadata: '{"resource": {"creators": {"creator": {"creatorName": "Stan Laurel"}}}}'
+
+two:
+  pure_id: 456
+  title: Bar
+  creator_name: Oliver Hardy
+  doi: 1/bar
+  doi_created_at: 2018-01-03T11:07:33+00:00
+  doi_created_by: aac
+  url: http://bar
+  url_updated_at: 2018-01-03T11:07:33+00:00
+  url_updated_by: aac
+  metadata_updated_at:
+  metadata_updated_by:
+  doi_registration_agent_id: 1
+  resource_type_id: 2
+  pure_uuid: ad2703a5-0fdc-46a0-80e8-54cb2cc68cad
+  metadata: '{"resource": {"creators": {"creator": {"creatorName": "Oliver Hardy"}}}}'
