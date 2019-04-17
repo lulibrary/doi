@@ -3,9 +3,9 @@ source 'https://rubygems.org'
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
 gem 'rails', '~> 4.2.1'
 # postgres
-gem 'pg'
+gem 'pg', '0.19.0'
 # Use sqlite3 as the database for Active Record
-gem 'sqlite3'
+# gem 'sqlite3'
 # Use SCSS for stylesheets
 gem 'sass-rails', '~> 4.0.3'
 # Use Uglifier as compressor for JavaScript assets
@@ -61,11 +61,11 @@ gem 'will_paginate', '~> 3.0.6'
 gem 'hash_to_html'
 
 # pure client
-gem 'puree'
+gem 'puree', '~> 2.6'
 # gem 'puree', '~> 2.0', path: '~/d/puree'
 
 # pure to datacite transformer
-gem 'research_metadata'
+gem 'research_metadata', '~> 2.0'
 # gem 'research_metadata', '~> 2.0', path: '~/d/research_metadata'
 
 gem 'pg_search'
