@@ -1,0 +1,13 @@
+# Exclude
+#
+*
+
+# Include
+#
+!Gemfile
+!Gemfile.lock
+!app
+!bin
+!config
+!lib
+!config.ru
