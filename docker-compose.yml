@@ -1,0 +1,22 @@
+version: "3.7"
+
+services:
+
+  doi:
+    network_mode: host
+    image: doi
+    ports:
+      - ${DOI_EXT_PORT}:3000
+    env_file:
+      - ${ENV_FILE}
+
+  doi-db:
+    image: postgres:11.1
+    ports:
+      - ${DOI_POSTGRES_EXT_PORT}:5432
+    environment:
+      - POSTGRES_DB: ${DOI_POSTGRES_DB}
+      - POSTGRES_USER: ${DOI_POSTGRES_USER}
+      - POSTGRES_PASSWORD: ${DOI_POSTGRES_PASSWORD}
+    volumes:    
+      - /var/lib/postgresql/data

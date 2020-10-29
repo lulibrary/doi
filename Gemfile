@@ -69,3 +69,5 @@ gem 'research_metadata', '~> 2.0'
 # gem 'research_metadata', '~> 2.0', path: '~/d/research_metadata'
 
 gem 'pg_search'
+
+gem 'turnout'

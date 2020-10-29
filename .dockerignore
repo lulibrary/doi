@@ -1,13 +1,9 @@
-# Exclude
-#
-*
+# Ignore the default SQLite database.
+/db/*.sqlite3
+/db/*.sqlite3-journal
 
-# Include
-#
-!Gemfile
-!Gemfile.lock
-!app
-!bin
-!config
-!lib
-!config.ru
+test
+
+.env.*
+
+.idea

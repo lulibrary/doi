@@ -18,6 +18,10 @@
 .env.development
 .env.production
 .env.test
+.env.local
+
 .idea
 
 /public/assets
+
+pure_ssl_certs
