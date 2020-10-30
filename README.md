@@ -24,7 +24,7 @@ DataCite's metadata schema version 4.0 is supported.
 
 Ruby version
 -
-2.1
+2.3.0
 
 
 Database creation
@@ -72,6 +72,14 @@ saved to the environment log.
 ```
 load './scripts/batch_url.rb'
 ```
+
+Maintenance mode
+-
+Mint uses the Turnout gem to put the site into maintenance mode when downtime is needed.
+    
+    $ rake maintenance:start
+    $ rake maintenance:start reason="It's broken :(" 
+    $ rake maintenance:end
 
 Troubleshooting
 -

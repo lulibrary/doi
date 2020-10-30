@@ -7,3 +7,5 @@ test
 .env.*
 
 .idea
+
+.boot

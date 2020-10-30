@@ -25,3 +25,5 @@
 /public/assets
 
 pure_ssl_certs
+
+.boot
