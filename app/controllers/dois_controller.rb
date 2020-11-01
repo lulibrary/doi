@@ -211,6 +211,7 @@ class DoisController < ApplicationController
         sm.metadata_created
       else
         flash[:error] = result
+        logger.error result
       end
     end
 
@@ -220,8 +221,10 @@ class DoisController < ApplicationController
       if result == 'success'
         sm.doi_created
         flash[:notice] = doi + ' minted with metadata'
+        create_doi_record(doi, url)
       else
         flash[:error] = result
+        logger.error result
       end
     end
 
@@ -253,10 +256,14 @@ class DoisController < ApplicationController
 
     response = create_remote_doi(endpoint, doi, url, username, password)
 
-    if response.code != '201'
+    if response.code == '201'
+      return 'success'
+    else
       return 'Datacite ' + response.code + ' ' + response.body
     end
+  end
 
+  def create_doi_record(doi, url)
     now = DateTime.now
     record = Record.find_or_create_by(doi: doi)
     record.doi_created_at = now
@@ -265,9 +272,6 @@ class DoisController < ApplicationController
     record.url_updated_at = now
     record.url_updated_by = get_user
     record.save
-
-    return 'success'
-
   end
 
   def claim_reservation(pure_id, resource_type_id)
