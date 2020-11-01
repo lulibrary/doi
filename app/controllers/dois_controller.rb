@@ -217,13 +217,12 @@ class DoisController < ApplicationController
       response = create_metadata(datacite_metadata)
       if response.code == '201'
         sm.metadata_created
-        flash[:notice] = doi + ' metadata created'
         db_doi = doi
         db_datacite_metadata = datacite_metadata
       else
         action = 'metadata creation'
         log_msg = "DataCite [#{action}]\n\n#{doi}\n\n#{response.code}\n\n#{response.body}\n\n#{datacite_metadata}"
-        flash[:error] = "There was a problem during #{action}. See log for details"
+        flash[:error] = log_msg
         logger.error log_msg
       end
     end
@@ -237,7 +236,7 @@ class DoisController < ApplicationController
       else
         action = 'DOI creation'
         log_msg = "DataCite [#{action}]\n\n#{doi}\n\n#{url}\n\n#{response.code}\n\n#{response.body}"
-        flash[:error] = "There was a problem during #{action}. See log for details"
+        flash[:error] = log_msg
         logger.error log_msg
       end
     end
