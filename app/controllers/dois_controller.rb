@@ -165,6 +165,9 @@ class DoisController < ApplicationController
     pure_id = params[:pure_id]
     output_type = params[:output_type].to_s
     redirect = nil
+    db_doi = nil
+    db_datacite_metadata = nil
+    db_url = nil
 
     resource_type = get_resource output_type
 
@@ -215,7 +218,8 @@ class DoisController < ApplicationController
       if response.code == '201'
         sm.metadata_created
         flash[:notice] = doi + ' metadata created'
-        create_metadata_record doi, datacite_metadata
+        db_doi = doi
+        db_datacite_metadata = datacite_metadata
       else
         action = 'metadata creation'
         log_msg = "DataCite [#{action}]\n\n#{doi}\n\n#{response.code}\n\n#{response.body}\n\n#{datacite_metadata}"
@@ -229,7 +233,7 @@ class DoisController < ApplicationController
       if response.code == '201'
         sm.doi_created
         flash[:notice] = doi + ' minted with metadata'
-        create_doi_record(doi, url)
+        db_url = url
       else
         action = 'DOI creation'
         log_msg = "DataCite [#{action}]\n\n#{doi}\n\n#{url}\n\n#{response.code}\n\n#{response.body}"
@@ -242,6 +246,8 @@ class DoisController < ApplicationController
       if minting_from_reservation
         delete_reserved_doi pure_id
       else
+        create_metadata_record db_doi, db_datacite_metadata
+        create_doi_record db_doi, db_url
         increment_resource_type_count output_type
       end
       redirect = :root
