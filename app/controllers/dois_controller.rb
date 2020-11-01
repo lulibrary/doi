@@ -163,7 +163,8 @@ class DoisController < ApplicationController
     sm = DoiCreateStateMachine.new
 
     pure_id = params[:pure_id]
-    output_type = params[:output_type]
+    output_type = params[:output_type].to_s
+    redirect = nil
 
     resource_type = get_resource output_type
 
@@ -206,25 +207,34 @@ class DoisController < ApplicationController
     end
 
     if sm.state == 'creating_metadata'
-      result = create_metadata(doi)
-      if result == 'success'
+      transformer = create_metadata_transformer output_type
+      datacite_metadata = transformer.transform id: pure_id,
+                                                doi: doi
+
+      response = create_metadata(datacite_metadata)
+      if response.code == '201'
         sm.metadata_created
+        flash[:notice] = doi + ' metadata created'
+        create_metadata_record doi, datacite_metadata
       else
-        flash[:error] = result
-        logger.error result
+        action = 'metadata creation'
+        log_msg = "DataCite [#{action}] #{response.code} #{response.body}"
+        flash[:error] = "There was a problem during #{action}. See log for details"
+        logger.error log_msg
       end
     end
 
     if sm.state == 'creating_doi'
-      result = create_doi(doi, url)
-
-      if result == 'success'
+      response = create_doi(doi, url)
+      if response.code == '201'
         sm.doi_created
         flash[:notice] = doi + ' minted with metadata'
         create_doi_record(doi, url)
       else
-        flash[:error] = result
-        logger.error result
+        action = 'DOI creation'
+        log_msg = "DataCite [#{action}] #{response.code} #{response.body}"
+        flash[:error] = "There was a problem during #{action}. See log for details"
+        logger.error log_msg
       end
     end
 
@@ -234,11 +244,14 @@ class DoisController < ApplicationController
       else
         increment_resource_type_count output_type
       end
+      redirect = :root
     end
 
     if flash[:error]
-      redirect_to :back
+      redirect = :back
     end
+
+    redirect_to redirect
 
     @sm_state = sm.state
   end
@@ -255,12 +268,6 @@ class DoisController < ApplicationController
     password = ENV['DATACITE_PASSWORD']
 
     response = create_remote_doi(endpoint, doi, url, username, password)
-
-    if response.code == '201'
-      return 'success'
-    else
-      return 'Datacite ' + response.code + ' ' + response.body
-    end
   end
 
   def create_doi_record(doi, url)
@@ -754,24 +761,17 @@ class DoisController < ApplicationController
     transformer
   end
 
-  def create_metadata(doi)
-    transformer = create_metadata_transformer params[:output_type]
-    datacite_metadata = transformer.transform id: params[:pure_id].to_s,
-                                              doi: doi
+  def create_metadata(datacite_metadata)
     # DATACITE
     endpoint = ENV['DATACITE_ENDPOINT'] + ENV['DATACITE_RESOURCE_METADATA']
     username = ENV['DATACITE_USERNAME']
     password = ENV['DATACITE_PASSWORD']
     response = update_remote_metadata(endpoint, datacite_metadata, username,
                                       password)
-    if response.code != '201'
-      return 'Datacite ' + response.code + ' ' + response.body
-    end
-    redirect_to :root,
-                :flash => { :notice => doi + ' metadata updated' }
+  end
 
+  def create_metadata_record(doi, datacite_metadata)
     agent_id = params[:record][:doi_registration_agent_id]
-
     resource_type_id = normalise_resource_name params[:output_type]
 
     now = DateTime.now
@@ -789,8 +789,6 @@ class DoisController < ApplicationController
     record.pure_uuid = params[:pure_uuid]
     record.metadata = serialise_xml_to_json(datacite_metadata)
     record.save
-
-    return 'success'
   end
 
   def update_remote_metadata(endpoint, xml, username, password)
