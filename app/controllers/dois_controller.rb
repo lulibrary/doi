@@ -228,16 +228,20 @@ class DoisController < ApplicationController
     end
 
     if sm.state == 'creating_doi'
-      response = create_doi(doi, url)
-      if response.code == '201'
-        sm.doi_created
-        flash[:notice] = doi + ' minted with metadata'
-        db_url = url
+      if uri_resolves? url
+        response = create_doi(doi, url)
+        if response.code == '201'
+          sm.doi_created
+          flash[:notice] = doi + ' minted with metadata'
+          db_url = url
+        else
+          action = 'DOI creation'
+          log_msg = "DataCite [#{action}]\n\n#{doi}\n\n#{url}\n\n#{response.code}\n\n#{response.body}"
+          flash[:error] = log_msg
+          logger.error log_msg
+        end
       else
-        action = 'DOI creation'
-        log_msg = "DataCite [#{action}]\n\n#{doi}\n\n#{url}\n\n#{response.code}\n\n#{response.body}"
-        flash[:error] = log_msg
-        logger.error log_msg
+        flash[:error] = "#{url} does not resolve, so #{doi} cannot be minted. Is the resource validated?"
       end
     end
 
@@ -259,6 +263,11 @@ class DoisController < ApplicationController
     redirect_to redirect
 
     @sm_state = sm.state
+  end
+
+  def uri_resolves?(uri)
+    response = HTTP.get uri
+    response.code.to_s === '404' ? false : true
   end
 
   def create_doi(doi, url)
