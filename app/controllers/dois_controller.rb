@@ -232,7 +232,7 @@ class DoisController < ApplicationController
       response = create_doi(doi, url)
       if response.code == '201'
         sm.doi_created
-        flash[:warning] = "#{url} does not resolve." if !uri_resolves?(url)
+        # flash[:warning] = "#{url} does not resolve." if !uri_resolves?(url)
         flash[:notice] = "#{doi} registered & associated with #{url}."
         db_url = url
       else
@@ -264,8 +264,10 @@ class DoisController < ApplicationController
   end
 
   def uri_resolves?(uri)
+    # TO DO
+    # Make version that works :)
     uri = URI.parse(uri)
-    http = Net::HTTP.new(uri.host)
+    http = Net::HTTP.new(uri.host, uri.port)
     req = Net::HTTP::Get.new(uri)
     response = http.request(req)
     response.code === '404' ? false : true
