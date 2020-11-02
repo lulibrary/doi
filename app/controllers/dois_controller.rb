@@ -174,24 +174,12 @@ class DoisController < ApplicationController
     minting_from_reservation = false
     reservation = get_reservation(pure_id)
     doi = reservation ? reservation.doi : nil
-    if doi
-      minting_from_reservation = true
-    end
-    if !doi
-      claim_reservation(pure_id, resource_type.id)
-      reservation = get_reservation(pure_id)
-      doi = reservation ? reservation.doi : nil
-      if doi
-        minting_from_reservation = true
-      end
-    end
+    minting_from_reservation = true if doi
+
     if !doi
       next_id = get_resource_type_next_id output_type
-
       doi_suffix = get_resource_type_doi_name output_type
-
       path = doi_suffix + '/' + next_id.to_s
-
       doi = build_doi(identifier: ENV['DATACITE_DOI_IDENTIFIER'],
                       prefix: ENV['DATACITE_DOI_PREFIX'], path: path)
     end
@@ -246,6 +234,8 @@ class DoisController < ApplicationController
     if sm.state == 'minted'
       if minting_from_reservation
         delete_reserved_doi pure_id
+        create_metadata_record db_doi, db_datacite_metadata
+        create_doi_record db_doi, db_url
       else
         create_metadata_record db_doi, db_datacite_metadata
         create_doi_record db_doi, db_url
@@ -299,16 +289,13 @@ class DoisController < ApplicationController
   end
 
   def claim_reservation(pure_id, resource_type_id)
-    reservation = get_cancelled_reservation
+    reservation = get_cancelled_reservation resource_type_id
     if reservation
-      # is the reservation for the same type of resource?
-      if reservation.resource_type_id === resource_type_id
-        reservation.pure_id = pure_id
-        now = DateTime.now
-        reservation.created_at = now
-        reservation.created_by = get_user
-        reservation.save
-      end
+      reservation.pure_id = pure_id
+      now = DateTime.now
+      reservation.created_at = now
+      reservation.created_by = get_user
+      reservation.save
     end
   end
 
@@ -316,43 +303,34 @@ class DoisController < ApplicationController
     pure_id = params[:pure_id]
     output_type = params[:output_type]
 
+    reserved_doi = nil
+
     resource_type = get_resource output_type
-
-    # is there an existing reservation?
-    if !reserved_doi?(pure_id)
-      # attempt to use a generated doi which has become available as a result
-      # of a cancelled reservation
-      claim_reservation(pure_id, resource_type.id)
-    end
-
-    # is there an existing reservation?
-    if !reserved_doi?(pure_id)
-
-
-      # create a new doi if there are none to recycle
+    resource_type_id = normalise_resource_name output_type
+    cancelled_reservation = get_cancelled_reservation(resource_type_id)
+    if cancelled_reservation
+      claim_reservation(pure_id, resource_type_id)
+      reservation = Reservation.where(pure_id: pure_id, resource_type_id: resource_type_id).first
+      reserved_doi = reservation.doi
+    else
       reservation = Reservation.create(pure_id: pure_id)
-
       next_id = get_resource_type_next_id output_type
-
       doi_suffix = get_resource_type_doi_name output_type
-
       path = doi_suffix + '/' + next_id.to_s
-
       doi = build_doi(identifier: ENV['DATACITE_DOI_IDENTIFIER'],
                       prefix: ENV['DATACITE_DOI_PREFIX'], path: path)
-
       reservation.doi = doi
       now = DateTime.now
       reservation.created_at = now
       reservation.created_by = get_user
       reservation.resource_type_id = resource_type.id
-
       if reservation.save
         increment_resource_type_count output_type
       end
+      reserved_doi = doi
     end
 
-    flash[:notice] = doi + ' reserved'
+    flash[:notice] = reserved_doi + ' reserved.'
     redirect_to :root
   end
 
@@ -896,8 +874,8 @@ def delete_reserved_doi(pure_id)
   Reservation.find_by(pure_id: pure_id).delete
 end
 
-def get_cancelled_reservation
-  return Reservation.where(pure_id: nil).first
+def get_cancelled_reservation(resource_type_id)
+  return Reservation.where(pure_id: nil, resource_type_id: resource_type_id).first
 end
 
 def get_reservation(pure_id)
