@@ -217,10 +217,11 @@ class DoisController < ApplicationController
       response = create_metadata(datacite_metadata)
       if response.code == '201'
         sm.metadata_created
+        flash[:notice] = "#{doi} metadata registered."
         db_doi = doi
         db_datacite_metadata = datacite_metadata
       else
-        action = 'metadata creation'
+        action = 'register metadata'
         log_msg = "DataCite [#{action}]\n\n#{doi}\n\n#{response.code}\n\n#{response.body}\n\n#{datacite_metadata}"
         flash[:error] = log_msg
         logger.error log_msg
@@ -232,10 +233,10 @@ class DoisController < ApplicationController
         response = create_doi(doi, url)
         if response.code == '201'
           sm.doi_created
-          flash[:notice] = doi + ' minted with metadata'
+          flash[:notice] = "#{doi} registered & associated with #{url}."
           db_url = url
         else
-          action = 'DOI creation'
+          action = 'register URL'
           log_msg = "DataCite [#{action}]\n\n#{doi}\n\n#{url}\n\n#{response.code}\n\n#{response.body}"
           flash[:error] = log_msg
           logger.error log_msg
