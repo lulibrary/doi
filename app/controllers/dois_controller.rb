@@ -267,8 +267,11 @@ class DoisController < ApplicationController
   end
 
   def uri_resolves?(uri)
-    response = HTTP.get uri
-    response.code.to_s === '404' ? false : true
+    uri = URI.parse(uri)
+    http = Net::HTTP.new(uri.host)
+    req = Net::HTTP::Get.new(uri)
+    response = http.request(req)
+    response.code === '404' ? false : true
   end
 
   def create_doi(doi, url)
