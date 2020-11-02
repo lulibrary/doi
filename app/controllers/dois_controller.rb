@@ -229,20 +229,17 @@ class DoisController < ApplicationController
     end
 
     if sm.state == 'creating_doi'
-      if uri_resolves? url
-        response = create_doi(doi, url)
-        if response.code == '201'
-          sm.doi_created
-          flash[:notice] = "#{doi} registered & associated with #{url}."
-          db_url = url
-        else
-          action = 'register URL'
-          log_msg = "DataCite [#{action}]\n\n#{doi}\n\n#{url}\n\n#{response.code}\n\n#{response.body}"
-          flash[:error] = log_msg
-          logger.error log_msg
-        end
+      response = create_doi(doi, url)
+      if response.code == '201'
+        sm.doi_created
+        flash[:warning] = "#{url} does not resolve." if !uri_resolves?(url)
+        flash[:notice] = "#{doi} registered & associated with #{url}."
+        db_url = url
       else
-        flash[:error] = "#{url} does not resolve, so #{doi} cannot be minted. Is the resource validated?"
+        action = 'register URL'
+        log_msg = "DataCite [#{action}]\n\n#{doi}\n\n#{url}\n\n#{response.code}\n\n#{response.body}"
+        flash[:error] = log_msg
+        logger.error log_msg
       end
     end
 
